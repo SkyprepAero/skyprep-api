@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Subject = require('../models/Subject');
 const { successResponse, errorResponse } = require('../utils/response');
 const { AppError } = require('../errors');
@@ -127,7 +128,7 @@ const updateSubject = async (req, res, next) => {
 };
 
 /**
- * Delete subject
+ * Delete subject (with cascade soft delete)
  */
 const deleteSubject = async (req, res, next) => {
   try {
@@ -138,37 +139,131 @@ const deleteSubject = async (req, res, next) => {
       throw new AppError(ERROR_CODES.SUBJECT.NOT_FOUND, 404);
     }
 
-    // Check if subject has chapters
+    // Get all chapters for this subject
     const Chapter = require('../models/Chapter');
-    const chapterCount = await Chapter.countDocuments({ subject: id });
-    if (chapterCount > 0) {
-      throw new AppError(ERROR_CODES.SUBJECT.HAS_CHAPTERS, 400, { chapterCount });
+    const Question = require('../models/Question');
+    const Option = require('../models/Option');
+
+    const chapters = await Chapter.find({ subject: id });
+    const chapterIds = chapters.map(chapter => chapter._id);
+
+    // Get all questions for these chapters
+    const questions = await Question.find({ chapter: { $in: chapterIds } });
+    const questionIds = questions.map(question => question._id);
+
+    // Soft delete all options for these questions
+    if (questionIds.length > 0) {
+      await Option.updateMany(
+        { question: { $in: questionIds } },
+        { deletedAt: new Date() }
+      );
     }
 
+    // Soft delete all questions for these chapters
+    if (chapterIds.length > 0) {
+      await Question.updateMany(
+        { chapter: { $in: chapterIds } },
+        { deletedAt: new Date() }
+      );
+    }
+
+    // Soft delete all chapters for this subject
+    if (chapters.length > 0) {
+      await Chapter.updateMany(
+        { subject: id },
+        { deletedAt: new Date() }
+      );
+    }
+
+    // Finally, soft delete the subject
     await subject.softDelete();
 
-    successResponse(res, null, 'Subject deleted successfully');
+    const deletedCounts = {
+      chapters: chapters.length,
+      questions: questions.length,
+      options: questionIds.length > 0 ? await Option.countDocuments({ question: { $in: questionIds } }) : 0
+    };
+
+    successResponse(res, { deletedCounts }, 'Subject and all related data deleted successfully');
   } catch (error) {
     next(error);
   }
 };
 
 /**
- * Restore soft deleted subject
+ * Restore soft deleted subject (with cascade restore)
  */
 const restoreSubject = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Find subject including soft deleted ones
-    const subject = await Subject.findById(id).where({ deletedAt: { $ne: null } });
-    if (!subject) {
+    // Find subject including soft deleted ones using aggregate
+    const subjects = await Subject.aggregate([
+      { $match: { _id: new mongoose.Types.ObjectId(id), deletedAt: { $ne: null } } }
+    ]);
+    
+    if (subjects.length === 0) {
       throw new AppError(ERROR_CODES.SUBJECT.NOT_FOUND, 404);
     }
+    
+    const subject = subjects[0];
 
-    await subject.restore();
+    const Chapter = require('../models/Chapter');
+    const Question = require('../models/Question');
+    const Option = require('../models/Option');
 
-    successResponse(res, subject, 'Subject restored successfully');
+    // Get all soft deleted chapters for this subject using aggregate
+    const chapters = await Chapter.aggregate([
+      { $match: { subject: new mongoose.Types.ObjectId(id), deletedAt: { $ne: null } } }
+    ]);
+    const chapterIds = chapters.map(chapter => chapter._id);
+
+    // Get all soft deleted questions for these chapters using aggregate
+    const questions = await Question.aggregate([
+      { $match: { chapter: { $in: chapterIds.map(id => new mongoose.Types.ObjectId(id)) }, deletedAt: { $ne: null } } }
+    ]);
+    const questionIds = questions.map(question => question._id);
+
+    // Restore all options for these questions
+    if (questionIds.length > 0) {
+      await Option.updateMany(
+        { question: { $in: questionIds.map(id => new mongoose.Types.ObjectId(id)) }, deletedAt: { $ne: null } },
+        { deletedAt: null }
+      );
+    }
+
+    // Restore all questions for these chapters
+    if (chapterIds.length > 0) {
+      await Question.updateMany(
+        { chapter: { $in: chapterIds.map(id => new mongoose.Types.ObjectId(id)) }, deletedAt: { $ne: null } },
+        { deletedAt: null }
+      );
+    }
+
+    // Restore all chapters for this subject
+    if (chapters.length > 0) {
+      await Chapter.updateMany(
+        { subject: new mongoose.Types.ObjectId(id), deletedAt: { $ne: null } },
+        { deletedAt: null }
+      );
+    }
+
+    // Finally, restore the subject using direct update
+    await Subject.updateOne(
+      { _id: new mongoose.Types.ObjectId(id) },
+      { deletedAt: null }
+    );
+
+    const restoredCounts = {
+      chapters: chapters.length,
+      questions: questions.length,
+      options: questionIds.length > 0 ? await Option.countDocuments({ question: { $in: questionIds.map(id => new mongoose.Types.ObjectId(id)) }, deletedAt: null }) : 0
+    };
+
+    // Get the restored subject
+    const restoredSubject = await Subject.findById(id);
+
+    successResponse(res, { subject: restoredSubject, restoredCounts }, 'Subject and all related data restored successfully');
   } catch (error) {
     next(error);
   }
@@ -182,20 +277,27 @@ const getDeletedSubjects = async (req, res, next) => {
     const { page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
 
-    // Use findWithDeleted to bypass the soft delete middleware
-    const subjects = await Subject.findWithDeleted({ deletedAt: { $ne: null } })
-      .sort({ deletedAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
+    // Use aggregate to bypass the pre-find hook
+    const subjects = await Subject.aggregate([
+      { $match: { deletedAt: { $ne: null } } },
+      { $sort: { deletedAt: -1 } },
+      { $skip: skip },
+      { $limit: parseInt(limit) }
+    ]);
 
-    const total = await Subject.countDocuments({ deletedAt: { $ne: null } });
+    const total = await Subject.aggregate([
+      { $match: { deletedAt: { $ne: null } } },
+      { $count: "total" }
+    ]);
+
+    const totalCount = total.length > 0 ? total[0].total : 0;
 
     successResponse(res, {
       subjects,
       pagination: {
         currentPage: parseInt(page),
-        totalPages: Math.ceil(total / limit),
-        totalItems: total,
+        totalPages: Math.ceil(totalCount / limit),
+        totalItems: totalCount,
         itemsPerPage: parseInt(limit)
       }
     }, 'Deleted subjects retrieved successfully');

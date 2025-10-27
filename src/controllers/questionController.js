@@ -343,9 +343,21 @@ const deleteQuestion = async (req, res, next) => {
       throw new AppError('Question not found', 404);
     }
 
+    const Option = require('../models/Option');
+
+    // Soft delete all options for this question
+    const optionsCount = await Option.countDocuments({ question: id });
+    if (optionsCount > 0) {
+      await Option.updateMany(
+        { question: id },
+        { deletedAt: new Date() }
+      );
+    }
+
+    // Finally, soft delete the question
     await question.softDelete();
 
-    successResponse(res, null, 'Question deleted successfully');
+    successResponse(res, { deletedOptions: optionsCount }, 'Question and all related options deleted successfully');
   } catch (error) {
     next(error);
   }

@@ -205,16 +205,38 @@ const deleteChapter = async (req, res, next) => {
       throw new AppError('Chapter not found', 404);
     }
 
-    // Check if chapter has questions
     const Question = require('../models/Question');
-    const questionCount = await Question.countDocuments({ chapter: id });
-    if (questionCount > 0) {
-      throw new AppError('Cannot delete chapter with existing questions', 400);
+    const Option = require('../models/Option');
+
+    // Get all questions for this chapter
+    const questions = await Question.find({ chapter: id });
+    const questionIds = questions.map(question => question._id);
+
+    // Soft delete all options for these questions
+    if (questionIds.length > 0) {
+      await Option.updateMany(
+        { question: { $in: questionIds } },
+        { deletedAt: new Date() }
+      );
     }
 
+    // Soft delete all questions for this chapter
+    if (questions.length > 0) {
+      await Question.updateMany(
+        { chapter: id },
+        { deletedAt: new Date() }
+      );
+    }
+
+    // Finally, soft delete the chapter
     await chapter.softDelete();
 
-    successResponse(res, null, 'Chapter deleted successfully');
+    const deletedCounts = {
+      questions: questions.length,
+      options: questionIds.length > 0 ? await Option.countDocuments({ question: { $in: questionIds } }) : 0
+    };
+
+    successResponse(res, { deletedCounts }, 'Chapter and all related data deleted successfully');
   } catch (error) {
     next(error);
   }

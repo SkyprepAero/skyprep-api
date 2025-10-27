@@ -104,6 +104,33 @@ router.get('/', subjectController.getAllSubjects);
 
 /**
  * @swagger
+ * /api/subjects/deleted:
+ *   get:
+ *     summary: Get all soft deleted subjects
+ *     tags: [Subjects]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: Deleted subjects retrieved successfully
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/deleted', subjectController.getDeletedSubjects);
+
+/**
+ * @swagger
  * /api/subjects/{id}:
  *   get:
  *     summary: Get subject by ID
@@ -213,32 +240,5 @@ router.delete('/:id', subjectController.deleteSubject);
  *         description: Internal server error
  */
 router.patch('/:id/restore', subjectController.restoreSubject);
-
-/**
- * @swagger
- * /api/subjects/deleted:
- *   get:
- *     summary: Get all soft deleted subjects
- *     tags: [Subjects]
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *         description: Number of items per page
- *     responses:
- *       200:
- *         description: Deleted subjects retrieved successfully
- *       500:
- *         description: Internal server error
- */
-router.get('/deleted', subjectController.getDeletedSubjects);
 
 module.exports = router;
