@@ -82,7 +82,7 @@ const optionController = require('../controllers/optionController');
  *       500:
  *         description: Internal server error
  */
-router.post('/question/:questionId', optionController.createOption);
+router.post('/question/:questionId', optionController.createOptions);
 
 /**
  * @swagger
