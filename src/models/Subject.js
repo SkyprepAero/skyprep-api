@@ -27,9 +27,19 @@ const subjectSchema = new mongoose.Schema({
 
 // Soft delete middleware
 subjectSchema.pre(/^find/, function() {
-  // Only show non-deleted records
+  // Only show non-deleted records by default
   this.where({ deletedAt: null });
 });
+
+// Static method to find deleted records (bypasses middleware)
+subjectSchema.statics.findDeleted = function(filter = {}) {
+  return this.find({ ...filter, deletedAt: { $ne: null } }).where({ deletedAt: { $ne: null } });
+};
+
+// Static method to count deleted records (bypasses middleware)
+subjectSchema.statics.countDeleted = function(filter = {}) {
+  return this.countDocuments({ ...filter, deletedAt: { $ne: null } });
+};
 
 // Soft delete method
 subjectSchema.methods.softDelete = function() {

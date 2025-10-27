@@ -38,12 +38,15 @@ const getAllSubjects = async (req, res, next) => {
     const skip = (page - 1) * limit;
 
     // Build filter object
-    const filter = {};
+    const filter = { deletedAt: null }; // Explicitly add soft delete filter
+    
     if (search) {
       filter.name = { $regex: search, $options: 'i' };
     }
     if (isActive !== undefined) {
-      filter.isActive = isActive === 'true';
+      // Convert string to boolean properly
+      const isActiveBool = isActive === 'true' || isActive === true;
+      filter.isActive = isActiveBool;
     }
 
     const subjects = await Subject.find(filter)
@@ -179,7 +182,8 @@ const getDeletedSubjects = async (req, res, next) => {
     const { page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
 
-    const subjects = await Subject.find({ deletedAt: { $ne: null } })
+    // Use findWithDeleted to bypass the soft delete middleware
+    const subjects = await Subject.findWithDeleted({ deletedAt: { $ne: null } })
       .sort({ deletedAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
