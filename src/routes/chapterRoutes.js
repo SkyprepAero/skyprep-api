@@ -1,14 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const chapterController = require('../controllers/chapterController');
-const { validateRequestWithJoi } = require('../middleware/validateRequest');
-const {
-  createChapterSchema,
-  updateChapterSchema,
-  getChaptersSchema,
-  getChapterByIdSchema,
-  getChaptersBySubjectSchema
-} = require('../validations/chapterValidation');
 
 /**
  * @swagger
@@ -85,7 +77,7 @@ const {
  *       500:
  *         description: Internal server error
  */
-router.post('/', validateRequestWithJoi(createChapterSchema), chapterController.createChapter);
+router.post('/', chapterController.createChapter);
 
 /**
  * @swagger
@@ -130,7 +122,7 @@ router.post('/', validateRequestWithJoi(createChapterSchema), chapterController.
  *       500:
  *         description: Internal server error
  */
-router.get('/', validateRequestWithJoi(getChaptersSchema), chapterController.getAllChapters);
+router.get('/', chapterController.getAllChapters);
 
 /**
  * @swagger
@@ -153,7 +145,7 @@ router.get('/', validateRequestWithJoi(getChaptersSchema), chapterController.get
  *       500:
  *         description: Internal server error
  */
-router.get('/:id', validateRequestWithJoi(getChapterByIdSchema), chapterController.getChapterById);
+router.get('/:id', chapterController.getChapterById);
 
 /**
  * @swagger
@@ -196,7 +188,7 @@ router.get('/:id', validateRequestWithJoi(getChapterByIdSchema), chapterControll
  *       500:
  *         description: Internal server error
  */
-router.get('/subject/:subjectId', validateRequestWithJoi(getChaptersBySubjectSchema), chapterController.getChaptersBySubject);
+router.get('/subject/:subjectId', chapterController.getChaptersBySubject);
 
 /**
  * @swagger
@@ -244,7 +236,7 @@ router.get('/subject/:subjectId', validateRequestWithJoi(getChaptersBySubjectSch
  *       500:
  *         description: Internal server error
  */
-router.put('/:id', validateRequestWithJoi(updateChapterSchema), chapterController.updateChapter);
+router.put('/:id', chapterController.updateChapter);
 
 /**
  * @swagger
@@ -269,6 +261,6 @@ router.put('/:id', validateRequestWithJoi(updateChapterSchema), chapterControlle
  *       500:
  *         description: Internal server error
  */
-router.delete('/:id', validateRequestWithJoi(getChapterByIdSchema), chapterController.deleteChapter);
+router.delete('/:id', chapterController.deleteChapter);
 
 module.exports = router;

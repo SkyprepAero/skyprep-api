@@ -1,16 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const questionController = require('../controllers/questionController');
-const { validateRequestWithJoi } = require('../middleware/validateRequest');
-const {
-  createQuestionSchema,
-  updateQuestionSchema,
-  getQuestionsSchema,
-  getQuestionByIdSchema,
-  getQuestionsByChapterSchema,
-  getQuestionsBySubjectSchema,
-  getQuestionStatsSchema
-} = require('../validations/questionValidation');
 
 /**
  * @swagger
@@ -141,7 +131,7 @@ const {
  *       500:
  *         description: Internal server error
  */
-router.post('/', validateRequestWithJoi(createQuestionSchema), questionController.createQuestion);
+router.post('/', questionController.createQuestion);
 
 /**
  * @swagger
@@ -197,7 +187,7 @@ router.post('/', validateRequestWithJoi(createQuestionSchema), questionControlle
  *       500:
  *         description: Internal server error
  */
-router.get('/', validateRequestWithJoi(getQuestionsSchema), questionController.getAllQuestions);
+router.get('/', questionController.getAllQuestions);
 
 /**
  * @swagger
@@ -222,7 +212,7 @@ router.get('/', validateRequestWithJoi(getQuestionsSchema), questionController.g
  *       500:
  *         description: Internal server error
  */
-router.get('/stats', validateRequestWithJoi(getQuestionStatsSchema), questionController.getQuestionStats);
+router.get('/stats', questionController.getQuestionStats);
 
 /**
  * @swagger
@@ -245,7 +235,7 @@ router.get('/stats', validateRequestWithJoi(getQuestionStatsSchema), questionCon
  *       500:
  *         description: Internal server error
  */
-router.get('/:id', validateRequestWithJoi(getQuestionByIdSchema), questionController.getQuestionById);
+router.get('/:id', questionController.getQuestionById);
 
 /**
  * @swagger
@@ -294,7 +284,7 @@ router.get('/:id', validateRequestWithJoi(getQuestionByIdSchema), questionContro
  *       500:
  *         description: Internal server error
  */
-router.get('/chapter/:chapterId', validateRequestWithJoi(getQuestionsByChapterSchema), questionController.getQuestionsByChapter);
+router.get('/chapter/:chapterId', questionController.getQuestionsByChapter);
 
 /**
  * @swagger
@@ -343,7 +333,7 @@ router.get('/chapter/:chapterId', validateRequestWithJoi(getQuestionsByChapterSc
  *       500:
  *         description: Internal server error
  */
-router.get('/subject/:subjectId', validateRequestWithJoi(getQuestionsBySubjectSchema), questionController.getQuestionsBySubject);
+router.get('/subject/:subjectId', questionController.getQuestionsBySubject);
 
 /**
  * @swagger
@@ -410,7 +400,7 @@ router.get('/subject/:subjectId', validateRequestWithJoi(getQuestionsBySubjectSc
  *       500:
  *         description: Internal server error
  */
-router.put('/:id', validateRequestWithJoi(updateQuestionSchema), questionController.updateQuestion);
+router.put('/:id', questionController.updateQuestion);
 
 /**
  * @swagger
@@ -433,6 +423,6 @@ router.put('/:id', validateRequestWithJoi(updateQuestionSchema), questionControl
  *       500:
  *         description: Internal server error
  */
-router.delete('/:id', validateRequestWithJoi(getQuestionByIdSchema), questionController.deleteQuestion);
+router.delete('/:id', questionController.deleteQuestion);
 
 module.exports = router;

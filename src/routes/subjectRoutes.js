@@ -1,13 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const subjectController = require('../controllers/subjectController');
-const { validateRequestWithJoi } = require('../middleware/validateRequest');
-const {
-  createSubjectSchema,
-  updateSubjectSchema,
-  getSubjectsSchema,
-  getSubjectByIdSchema
-} = require('../validations/subjectValidation');
 
 /**
  * @swagger
@@ -67,7 +60,7 @@ const {
  *       500:
  *         description: Internal server error
  */
-router.post('/', validateRequestWithJoi(createSubjectSchema), subjectController.createSubject);
+router.post('/', subjectController.createSubject);
 
 /**
  * @swagger
@@ -107,7 +100,7 @@ router.post('/', validateRequestWithJoi(createSubjectSchema), subjectController.
  *       500:
  *         description: Internal server error
  */
-router.get('/', validateRequestWithJoi(getSubjectsSchema), subjectController.getAllSubjects);
+router.get('/', subjectController.getAllSubjects);
 
 /**
  * @swagger
@@ -130,7 +123,7 @@ router.get('/', validateRequestWithJoi(getSubjectsSchema), subjectController.get
  *       500:
  *         description: Internal server error
  */
-router.get('/:id', validateRequestWithJoi(getSubjectByIdSchema), subjectController.getSubjectById);
+router.get('/:id', subjectController.getSubjectById);
 
 /**
  * @swagger
@@ -171,7 +164,7 @@ router.get('/:id', validateRequestWithJoi(getSubjectByIdSchema), subjectControll
  *       500:
  *         description: Internal server error
  */
-router.put('/:id', validateRequestWithJoi(updateSubjectSchema), subjectController.updateSubject);
+router.put('/:id', subjectController.updateSubject);
 
 /**
  * @swagger
@@ -196,7 +189,7 @@ router.put('/:id', validateRequestWithJoi(updateSubjectSchema), subjectControlle
  *       500:
  *         description: Internal server error
  */
-router.delete('/:id', validateRequestWithJoi(getSubjectByIdSchema), subjectController.deleteSubject);
+router.delete('/:id', subjectController.deleteSubject);
 
 /**
  * @swagger
@@ -219,7 +212,7 @@ router.delete('/:id', validateRequestWithJoi(getSubjectByIdSchema), subjectContr
  *       500:
  *         description: Internal server error
  */
-router.patch('/:id/restore', validateRequestWithJoi(getSubjectByIdSchema), subjectController.restoreSubject);
+router.patch('/:id/restore', subjectController.restoreSubject);
 
 /**
  * @swagger
@@ -246,6 +239,6 @@ router.patch('/:id/restore', validateRequestWithJoi(getSubjectByIdSchema), subje
  *       500:
  *         description: Internal server error
  */
-router.get('/deleted', validateRequestWithJoi(getSubjectsSchema), subjectController.getDeletedSubjects);
+router.get('/deleted', subjectController.getDeletedSubjects);
 
 module.exports = router;
