@@ -198,4 +198,54 @@ router.put('/:id', validateRequestWithJoi(updateSubjectSchema), subjectControlle
  */
 router.delete('/:id', validateRequestWithJoi(getSubjectByIdSchema), subjectController.deleteSubject);
 
+/**
+ * @swagger
+ * /api/subjects/{id}/restore:
+ *   patch:
+ *     summary: Restore a soft deleted subject
+ *     tags: [Subjects]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Subject ID
+ *     responses:
+ *       200:
+ *         description: Subject restored successfully
+ *       404:
+ *         description: Subject not found
+ *       500:
+ *         description: Internal server error
+ */
+router.patch('/:id/restore', validateRequestWithJoi(getSubjectByIdSchema), subjectController.restoreSubject);
+
+/**
+ * @swagger
+ * /api/subjects/deleted:
+ *   get:
+ *     summary: Get all soft deleted subjects
+ *     tags: [Subjects]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *     responses:
+ *       200:
+ *         description: Deleted subjects retrieved successfully
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/deleted', validateRequestWithJoi(getSubjectsSchema), subjectController.getDeletedSubjects);
+
 module.exports = router;

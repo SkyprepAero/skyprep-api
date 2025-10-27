@@ -1,4 +1,7 @@
-const { Question, Chapter, Subject, Option } = require('../models');
+const Question = require('../models/Question');
+const Chapter = require('../models/Chapter');
+const Subject = require('../models/Subject');
+const Option = require('../models/Option');
 const { successResponse, errorResponse } = require('../utils/response');
 const { AppError } = require('../errors');
 
@@ -340,7 +343,7 @@ const deleteQuestion = async (req, res, next) => {
       throw new AppError('Question not found', 404);
     }
 
-    await Question.findByIdAndDelete(id);
+    await question.softDelete();
 
     successResponse(res, null, 'Question deleted successfully');
   } catch (error) {

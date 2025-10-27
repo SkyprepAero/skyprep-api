@@ -8,11 +8,12 @@ const { errorHandler } = require('./utils/errorHandler');
 const { ERROR_MESSAGES } = require('./utils/constants');
 const { swaggerUi, swaggerSpec } = require('./config/swagger');
 
-// Import all models to ensure they are registered with Mongoose
-require('./models');
-
-// Connect to MongoDB
+// Connect to MongoDB first
 connectDB();
+
+// Import all models after database connection
+// This ensures models are registered with the connected mongoose instance
+const models = require('./models');
 
 // Initialize Express app
 const app = express();
@@ -59,9 +60,32 @@ app.get('/', (req, res) => {
       health: '/health',
       swagger: '/api-docs',
       users: `/api/${apiVersion}/users`,
-      auth: `/api/${apiVersion}/auth`
+      auth: `/api/${apiVersion}/auth`,
+      subjects: `/api/${apiVersion}/subjects`,
+      chapters: `/api/${apiVersion}/chapters`,
+      questions: `/api/${apiVersion}/questions`,
+      options: `/api/${apiVersion}/options`
     }
   });
+});
+
+// Test endpoint to check models
+app.get('/test-models', async (req, res) => {
+  try {
+    const Subject = require('./models/Subject');
+    const count = await Subject.countDocuments();
+    res.json({
+      success: true,
+      message: 'Models are working',
+      subjectCount: count
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Model error',
+      error: error.message
+    });
+  }
 });
 
 // 404 handler - must be before error handler

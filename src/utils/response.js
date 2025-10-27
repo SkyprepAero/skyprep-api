@@ -1,5 +1,5 @@
 // Success Response
-const successResponse = (res, statusCode, message, data = null) => {
+const successResponse = (res, data, message, statusCode = 200) => {
   const response = {
     success: true,
     message

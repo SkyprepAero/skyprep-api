@@ -1,4 +1,5 @@
-const { Option, Question } = require('../models');
+const Option = require('../models/Option');
+const Question = require('../models/Question');
 const { successResponse, errorResponse } = require('../utils/response');
 const { AppError } = require('../errors');
 
@@ -136,7 +137,7 @@ const deleteOption = async (req, res, next) => {
       }
     }
 
-    await Option.findByIdAndDelete(optionId);
+    await option.softDelete();
 
     successResponse(res, null, 'Option deleted successfully');
   } catch (error) {

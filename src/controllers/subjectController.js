@@ -1,6 +1,7 @@
-const { Subject } = require('../models');
+const Subject = require('../models/Subject');
 const { successResponse, errorResponse } = require('../utils/response');
 const { AppError } = require('../errors');
+const { ERROR_CODES } = require('../errors');
 
 /**
  * Create a new subject
@@ -12,7 +13,7 @@ const createSubject = async (req, res, next) => {
     // Check if subject already exists
     const existingSubject = await Subject.findOne({ name });
     if (existingSubject) {
-      throw new AppError('Subject with this name already exists', 400);
+      throw new AppError(ERROR_CODES.SUBJECT.ALREADY_EXISTS, 400, { field: 'name', value: name });
     }
 
     const subject = new Subject({
@@ -75,7 +76,7 @@ const getSubjectById = async (req, res, next) => {
 
     const subject = await Subject.findById(id);
     if (!subject) {
-      throw new AppError('Subject not found', 404);
+      throw new AppError(ERROR_CODES.SUBJECT.NOT_FOUND, 404);
     }
 
     successResponse(res, subject, 'Subject retrieved successfully');
@@ -94,14 +95,14 @@ const updateSubject = async (req, res, next) => {
 
     const subject = await Subject.findById(id);
     if (!subject) {
-      throw new AppError('Subject not found', 404);
+      throw new AppError(ERROR_CODES.SUBJECT.NOT_FOUND, 404);
     }
 
     // Check if name is being changed and if it already exists
     if (name && name !== subject.name) {
       const existingSubject = await Subject.findOne({ name, _id: { $ne: id } });
       if (existingSubject) {
-        throw new AppError('Subject with this name already exists', 400);
+        throw new AppError(ERROR_CODES.SUBJECT.ALREADY_EXISTS, 400, { field: 'name', value: name });
       }
     }
 
@@ -131,19 +132,69 @@ const deleteSubject = async (req, res, next) => {
 
     const subject = await Subject.findById(id);
     if (!subject) {
-      throw new AppError('Subject not found', 404);
+      throw new AppError(ERROR_CODES.SUBJECT.NOT_FOUND, 404);
     }
 
     // Check if subject has chapters
     const Chapter = require('../models/Chapter');
     const chapterCount = await Chapter.countDocuments({ subject: id });
     if (chapterCount > 0) {
-      throw new AppError('Cannot delete subject with existing chapters', 400);
+      throw new AppError(ERROR_CODES.SUBJECT.HAS_CHAPTERS, 400, { chapterCount });
     }
 
-    await Subject.findByIdAndDelete(id);
+    await subject.softDelete();
 
     successResponse(res, null, 'Subject deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Restore soft deleted subject
+ */
+const restoreSubject = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Find subject including soft deleted ones
+    const subject = await Subject.findById(id).where({ deletedAt: { $ne: null } });
+    if (!subject) {
+      throw new AppError(ERROR_CODES.SUBJECT.NOT_FOUND, 404);
+    }
+
+    await subject.restore();
+
+    successResponse(res, subject, 'Subject restored successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get soft deleted subjects
+ */
+const getDeletedSubjects = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (page - 1) * limit;
+
+    const subjects = await Subject.find({ deletedAt: { $ne: null } })
+      .sort({ deletedAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Subject.countDocuments({ deletedAt: { $ne: null } });
+
+    successResponse(res, {
+      subjects,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        itemsPerPage: parseInt(limit)
+      }
+    }, 'Deleted subjects retrieved successfully');
   } catch (error) {
     next(error);
   }
@@ -154,5 +205,7 @@ module.exports = {
   getAllSubjects,
   getSubjectById,
   updateSubject,
-  deleteSubject
+  deleteSubject,
+  restoreSubject,
+  getDeletedSubjects
 };

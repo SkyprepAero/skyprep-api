@@ -54,6 +54,27 @@ module.exports = {
     VALIDATION_ERROR: { code: 'DB_5005', message: 'Database validation failed' }
   },
 
+  // Subject Errors (6000-6999)
+  SUBJECT: {
+    NOT_FOUND: { code: 'SUB_6001', message: 'Subject not found' },
+    ALREADY_EXISTS: { code: 'SUB_6002', message: 'Subject with this name already exists' },
+    HAS_CHAPTERS: { code: 'SUB_6003', message: 'Cannot delete subject with existing chapters' }
+  },
+
+  // Chapter Errors (7000-7999)
+  CHAPTER: {
+    NOT_FOUND: { code: 'CHP_7001', message: 'Chapter not found' },
+    ALREADY_EXISTS: { code: 'CHP_7002', message: 'Chapter with this name already exists in the subject' },
+    HAS_QUESTIONS: { code: 'CHP_7003', message: 'Cannot delete chapter with existing questions' }
+  },
+
+  // Question Errors (8000-8999)
+  QUESTION: {
+    NOT_FOUND: { code: 'QST_8001', message: 'Question not found' },
+    INVALID_OPTIONS: { code: 'QST_8002', message: 'Question must have between 2 and 4 options' },
+    NO_CORRECT_OPTION: { code: 'QST_8003', message: 'At least one option must be marked as correct' }
+  },
+
   // Server Errors (9000-9999)
   SERVER: {
     INTERNAL_ERROR: { code: 'SRV_9001', message: 'Internal server error' },

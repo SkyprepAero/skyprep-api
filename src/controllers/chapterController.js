@@ -1,4 +1,5 @@
-const { Chapter, Subject } = require('../models');
+const Chapter = require('../models/Chapter');
+const Subject = require('../models/Subject');
 const { successResponse, errorResponse } = require('../utils/response');
 const { AppError } = require('../errors');
 
@@ -211,7 +212,7 @@ const deleteChapter = async (req, res, next) => {
       throw new AppError('Cannot delete chapter with existing questions', 400);
     }
 
-    await Chapter.findByIdAndDelete(id);
+    await chapter.softDelete();
 
     successResponse(res, null, 'Chapter deleted successfully');
   } catch (error) {

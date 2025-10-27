@@ -5,12 +5,13 @@ This document provides a comprehensive guide to the Question System APIs for man
 ## Table of Contents
 1. [System Overview](#system-overview)
 2. [Database Schema](#database-schema)
-3. [API Endpoints](#api-endpoints)
-4. [Data Models](#data-models)
-5. [Validation Rules](#validation-rules)
-6. [Usage Examples](#usage-examples)
-7. [Error Handling](#error-handling)
-8. [Best Practices](#best-practices)
+3. [Soft Delete System](#soft-delete-system)
+4. [API Endpoints](#api-endpoints)
+5. [Data Models](#data-models)
+6. [Validation Rules](#validation-rules)
+7. [Usage Examples](#usage-examples)
+8. [Error Handling](#error-handling)
+9. [Best Practices](#best-practices)
 
 ## System Overview
 
@@ -28,6 +29,7 @@ Subject (1) → (Many) Chapter (1) → (Many) Question (1) → (Many) Option
 - **Pagination Support**: Efficient data retrieval with pagination
 - **Validation**: Robust input validation using Joi schemas
 - **Statistics**: Detailed analytics and reporting
+- **Soft Delete**: All records support soft delete with restore functionality
 
 ## Database Schema
 
@@ -38,6 +40,7 @@ Subject (1) → (Many) Chapter (1) → (Many) Question (1) → (Many) Option
   name: String (required, unique),
   description: String (optional),
   isActive: Boolean (default: true),
+  deletedAt: Date (default: null, for soft delete),
   createdAt: Date,
   updatedAt: Date
 }
@@ -52,6 +55,7 @@ Subject (1) → (Many) Chapter (1) → (Many) Question (1) → (Many) Option
   subject: ObjectId (ref: 'Subject', required),
   order: Number (default: 0),
   isActive: Boolean (default: true),
+  deletedAt: Date (default: null, for soft delete),
   createdAt: Date,
   updatedAt: Date
 }
@@ -67,6 +71,7 @@ Subject (1) → (Many) Chapter (1) → (Many) Question (1) → (Many) Option
   difficulty: String (enum: ['easy', 'medium', 'hard'], default: 'medium'),
   marks: Number (1-10, default: 1),
   isActive: Boolean (default: true),
+  deletedAt: Date (default: null, for soft delete),
   createdAt: Date,
   updatedAt: Date
 }
@@ -81,10 +86,36 @@ Subject (1) → (Many) Chapter (1) → (Many) Question (1) → (Many) Option
   question: ObjectId (ref: 'Question', required),
   order: Number (default: 0),
   isActive: Boolean (default: true),
+  deletedAt: Date (default: null, for soft delete),
   createdAt: Date,
   updatedAt: Date
 }
 ```
+
+## Soft Delete System
+
+The Question System implements a comprehensive soft delete mechanism that allows records to be marked as deleted without actually removing them from the database. This provides data safety and the ability to restore accidentally deleted content.
+
+### How Soft Delete Works
+
+1. **Deletion Process**: When a record is "deleted", the `deletedAt` field is set to the current timestamp
+2. **Query Filtering**: All standard queries automatically exclude soft-deleted records (`deletedAt: null`)
+3. **Restoration**: Records can be restored by setting `deletedAt` back to `null`
+4. **Data Integrity**: Soft-deleted records maintain all relationships and can be fully restored
+
+### Soft Delete Features
+
+- **Automatic Filtering**: All `find()` operations exclude soft-deleted records
+- **Restore Functionality**: Deleted records can be restored with a single API call
+- **View Deleted Records**: Special endpoints to view and manage soft-deleted records
+- **Cascade Protection**: Prevents deletion of records that have dependent data
+- **Audit Trail**: Maintains deletion timestamp for audit purposes
+
+### Soft Delete Methods
+
+Each model includes these methods:
+- `softDelete()`: Marks record as deleted by setting `deletedAt` timestamp
+- `restore()`: Restores record by setting `deletedAt` to `null`
 
 ## API Endpoints
 
@@ -154,12 +185,79 @@ PUT /api/v1/subjects/{id}
 }
 ```
 
-### Delete Subject
+### Delete Subject (Soft Delete)
 ```http
 DELETE /api/v1/subjects/{id}
 ```
 
-**Note:** Cannot delete subjects that have chapters.
+**Note:** Cannot delete subjects that have chapters. This performs a soft delete.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Subject deleted successfully",
+  "data": null
+}
+```
+
+### Restore Subject
+```http
+PATCH /api/v1/subjects/{id}/restore
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Subject restored successfully",
+  "data": {
+    "_id": "60f7b3b3b3b3b3b3b3b3b3b3",
+    "name": "Mathematics",
+    "description": "Mathematical concepts and problems",
+    "isActive": true,
+    "deletedAt": null,
+    "createdAt": "2023-07-20T10:30:00.000Z",
+    "updatedAt": "2023-07-20T10:30:00.000Z"
+  }
+}
+```
+
+### Get Deleted Subjects
+```http
+GET /api/v1/subjects/deleted?page=1&limit=10
+```
+
+**Query Parameters:**
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 10, max: 100)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Deleted subjects retrieved successfully",
+  "data": {
+    "subjects": [
+      {
+        "_id": "60f7b3b3b3b3b3b3b3b3b3b3",
+        "name": "Old Mathematics",
+        "description": "Old mathematical concepts",
+        "isActive": true,
+        "deletedAt": "2023-07-21T15:30:00.000Z",
+        "createdAt": "2023-07-20T10:30:00.000Z",
+        "updatedAt": "2023-07-21T15:30:00.000Z"
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 1,
+      "totalItems": 1,
+      "itemsPerPage": 10
+    }
+  }
+}
+```
 
 ---
 
@@ -207,12 +305,54 @@ GET /api/v1/chapters/{id}
 PUT /api/v1/chapters/{id}
 ```
 
-### Delete Chapter
+### Delete Chapter (Soft Delete)
 ```http
 DELETE /api/v1/chapters/{id}
 ```
 
-**Note:** Cannot delete chapters that have questions.
+**Note:** Cannot delete chapters that have questions. This performs a soft delete.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Chapter deleted successfully",
+  "data": null
+}
+```
+
+### Restore Chapter
+```http
+PATCH /api/v1/chapters/{id}/restore
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Chapter restored successfully",
+  "data": {
+    "_id": "60f7b3b3b3b3b3b3b3b3b3b4",
+    "name": "Algebra",
+    "description": "Basic algebraic concepts",
+    "subject": "60f7b3b3b3b3b3b3b3b3b3b3",
+    "order": 1,
+    "isActive": true,
+    "deletedAt": null,
+    "createdAt": "2023-07-20T10:30:00.000Z",
+    "updatedAt": "2023-07-20T10:30:00.000Z"
+  }
+}
+```
+
+### Get Deleted Chapters
+```http
+GET /api/v1/chapters/deleted?page=1&limit=10
+```
+
+**Query Parameters:**
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 10, max: 100)
 
 ---
 
@@ -303,10 +443,55 @@ GET /api/v1/questions/{id}
 PUT /api/v1/questions/{id}
 ```
 
-### Delete Question
+### Delete Question (Soft Delete)
 ```http
 DELETE /api/v1/questions/{id}
 ```
+
+**Note:** This performs a soft delete.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Question deleted successfully",
+  "data": null
+}
+```
+
+### Restore Question
+```http
+PATCH /api/v1/questions/{id}/restore
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Question restored successfully",
+  "data": {
+    "_id": "60f7b3b3b3b3b3b3b3b3b3b5",
+    "questionText": "What is 2 + 2?",
+    "explanation": "Basic addition",
+    "chapter": "60f7b3b3b3b3b3b3b3b3b3b4",
+    "difficulty": "easy",
+    "marks": 1,
+    "isActive": true,
+    "deletedAt": null,
+    "createdAt": "2023-07-20T10:30:00.000Z",
+    "updatedAt": "2023-07-20T10:30:00.000Z"
+  }
+}
+```
+
+### Get Deleted Questions
+```http
+GET /api/v1/questions/deleted?page=1&limit=10
+```
+
+**Query Parameters:**
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 10, max: 100)
 
 ---
 
@@ -357,10 +542,54 @@ PUT /api/v1/options/{optionId}
 }
 ```
 
-### Delete Option
+### Delete Option (Soft Delete)
 ```http
 DELETE /api/v1/options/{optionId}
 ```
+
+**Note:** This performs a soft delete. Cannot delete the only correct option.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Option deleted successfully",
+  "data": null
+}
+```
+
+### Restore Option
+```http
+PATCH /api/v1/options/{optionId}/restore
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Option restored successfully",
+  "data": {
+    "_id": "60f7b3b3b3b3b3b3b3b3b3b6",
+    "text": "4",
+    "isCorrect": true,
+    "question": "60f7b3b3b3b3b3b3b3b3b3b5",
+    "order": 0,
+    "isActive": true,
+    "deletedAt": null,
+    "createdAt": "2023-07-20T10:30:00.000Z",
+    "updatedAt": "2023-07-20T10:30:00.000Z"
+  }
+}
+```
+
+### Get Deleted Options
+```http
+GET /api/v1/options/deleted?page=1&limit=10
+```
+
+**Query Parameters:**
+- `page` (optional): Page number (default: 1)
+- `limit` (optional): Items per page (default: 10, max: 100)
 
 ### Reorder Options
 ```http
@@ -609,7 +838,14 @@ All APIs return consistent error responses:
 - Filter by specific criteria when possible
 - Use indexes for frequently queried fields
 
-### 5. Security
+### 5. Soft Delete Management
+- **Regular Cleanup**: Periodically review and permanently delete old soft-deleted records
+- **Restore Workflow**: Implement proper approval process for restoring deleted content
+- **Audit Trail**: Monitor deletion patterns and restore activities
+- **Cascade Handling**: Understand that soft-deleted parent records affect child record visibility
+- **Data Integrity**: Always check for dependent records before allowing deletion
+
+### 6. Security
 - Validate all input data
 - Sanitize user inputs
 - Use proper error handling

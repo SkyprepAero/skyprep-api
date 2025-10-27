@@ -25,17 +25,33 @@ const optionSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  deletedAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true
 });
 
-// Index for better query performance
-optionSchema.index({ question: 1 });
-optionSchema.index({ isCorrect: 1 });
-optionSchema.index({ isActive: 1 });
+// Indexes removed for now
 
-// Ensure unique order within a question
-optionSchema.index({ question: 1, order: 1 }, { unique: true });
+// Soft delete middleware
+optionSchema.pre(/^find/, function() {
+  // Only show non-deleted records
+  this.where({ deletedAt: null });
+});
+
+// Soft delete method
+optionSchema.methods.softDelete = function() {
+  this.deletedAt = new Date();
+  return this.save();
+};
+
+// Restore method
+optionSchema.methods.restore = function() {
+  this.deletedAt = null;
+  return this.save();
+};
 
 module.exports = mongoose.model('Option', optionSchema);
