@@ -29,7 +29,15 @@ const validateRequest = (req, res, next) => {
 const validateRequestWithJoi = (schema) => {
   return (req, res, next) => {
     // Determine what to validate based on request method
-    const dataToValidate = req.method === 'GET' ? req.query : req.body;
+    let dataToValidate;
+    if (req.method === 'GET') {
+      dataToValidate = req.query;
+    } else if (req.method === 'DELETE' && req.params.id) {
+      // For DELETE requests with ID in URL, validate params
+      dataToValidate = req.params;
+    } else {
+      dataToValidate = req.body;
+    }
     
     const { error, value } = schema.validate(dataToValidate, { 
       abortEarly: false,
@@ -54,6 +62,8 @@ const validateRequestWithJoi = (schema) => {
     // Replace the appropriate data with validated and sanitized data
     if (req.method === 'GET') {
       req.query = value;
+    } else if (req.method === 'DELETE' && req.params.id) {
+      req.params = value;
     } else {
       req.body = value;
     }
