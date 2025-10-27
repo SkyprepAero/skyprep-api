@@ -20,10 +20,19 @@ const app = express();
 
 // Middleware
 app.use(helmet()); // Security headers
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  credentials: true
-}));
+// CORS configuration - Allow all origins with credentials
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow all origins (including null for mobile apps, Postman, etc.)
+    callback(null, true);
+  },
+  credentials: true, // Allow credentials
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(morgan('dev')); // Logging
 app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
@@ -46,6 +55,20 @@ app.get('/health', (req, res) => {
     message: 'Server is running',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// CORS debug endpoint
+app.get('/cors-debug', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'CORS is working',
+    origin: req.get('Origin'),
+    headers: req.headers,
+    corsOrigin: process.env.CORS_ORIGIN,
+    allowedOrigins: process.env.CORS_ORIGIN 
+      ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+      : ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000']
   });
 });
 
