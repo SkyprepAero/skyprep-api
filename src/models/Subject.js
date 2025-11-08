@@ -11,6 +11,11 @@ const subjectSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  defaultMarks: {
+    type: Number,
+    default: 0,
+    min: [0, 'Default marks cannot be negative']
+  },
   isActive: {
     type: Boolean,
     default: true

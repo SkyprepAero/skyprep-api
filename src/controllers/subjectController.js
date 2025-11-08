@@ -9,7 +9,7 @@ const { ERROR_CODES } = require('../errors');
  */
 const createSubject = async (req, res, next) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, defaultMarks } = req.body;
 
     // Check if subject already exists
     const existingSubject = await Subject.findOne({ name });
@@ -19,7 +19,8 @@ const createSubject = async (req, res, next) => {
 
     const subject = new Subject({
       name,
-      description
+      description,
+      defaultMarks
     });
 
     await subject.save();
@@ -95,7 +96,7 @@ const getSubjectById = async (req, res, next) => {
 const updateSubject = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, description, isActive } = req.body;
+    const { name, description, isActive, defaultMarks } = req.body;
 
     const subject = await Subject.findById(id);
     if (!subject) {
@@ -114,6 +115,7 @@ const updateSubject = async (req, res, next) => {
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (isActive !== undefined) updateData.isActive = isActive;
+    if (defaultMarks !== undefined) updateData.defaultMarks = defaultMarks;
 
     const updatedSubject = await Subject.findByIdAndUpdate(
       id,
