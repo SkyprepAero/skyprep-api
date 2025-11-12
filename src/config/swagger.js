@@ -123,6 +123,16 @@ const options = {
             }
           }
         },
+        GoogleLoginRequest: {
+          type: 'object',
+          required: ['idToken'],
+          properties: {
+            idToken: {
+              type: 'string',
+              description: 'Google ID token obtained from client-side OAuth flow'
+            }
+          }
+        },
         AuthResponse: {
           type: 'object',
           properties: {
@@ -143,7 +153,35 @@ const options = {
                     id: { type: 'string' },
                     name: { type: 'string' },
                     email: { type: 'string' },
-                    role: { type: 'string' }
+                    roles: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          name: { type: 'string' },
+                          displayName: { type: 'string' },
+                          level: { type: 'integer' }
+                        }
+                      }
+                    },
+                    primaryRole: {
+                      type: 'object',
+                      nullable: true,
+                      properties: {
+                        id: { type: 'string' },
+                        name: { type: 'string' },
+                        displayName: { type: 'string' },
+                        level: { type: 'integer' }
+                      }
+                    },
+                    permissions: {
+                      type: 'array',
+                      items: { type: 'string' }
+                    },
+                    isActive: { type: 'boolean' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                    updatedAt: { type: 'string', format: 'date-time' }
                   }
                 },
                 token: {

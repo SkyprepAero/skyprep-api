@@ -109,6 +109,61 @@ Authenticate and get JWT token.
 
 ---
 
+#### Login with Google
+**POST** `/api/v1/auth/google`
+
+Login or register via Google OAuth using an ID token from the client.
+
+**Request Body:**
+```json
+{
+  "idToken": "google-id-token"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "user": {
+      "id": "64a7b8c9d12e3f4g5h6i7j8k",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "roles": [
+        {
+          "id": "64a7b8c9d12e3f4g5h6i7j8m",
+          "name": "user",
+          "displayName": "User",
+          "level": 1
+        }
+      ],
+      "primaryRole": {
+        "id": "64a7b8c9d12e3f4g5h6i7j8m",
+        "name": "user",
+        "displayName": "User"
+      },
+      "permissions": [
+        "user:read"
+      ]
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+```
+
+**Prerequisites:**
+- Environment variable `GOOGLE_CLIENT_ID` must be set on the server.
+- Default `user` role must exist (run database seed scripts).
+
+**Error Responses:**
+- `400 Bad Request` - Validation error (missing `idToken`)
+- `401 Unauthorized` - Google authentication failed or email not verified
+- `500 Internal Server Error` - Google OAuth configuration missing
+
+---
+
 #### 3. Get Current User
 **GET** `/api/v1/auth/me`
 

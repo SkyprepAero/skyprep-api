@@ -8,7 +8,8 @@ skyprep-api/
 │   ├── config/                    # Configuration files
 │   │   ├── database.js            # MongoDB connection
 │   │   ├── jwt.js                 # JWT utilities
-│   │   └── swagger.js             # Swagger configuration
+│   │   ├── swagger.js             # Swagger configuration
+│   │   └── email.js               # SMTP and email template configuration
 │   │
 │   ├── controllers/               # Business logic
 │   │   ├── authController.js      # Authentication logic
@@ -40,9 +41,18 @@ skyprep-api/
 │   │   ├── errorHandler.js        # Global error handler
 │   │   └── response.js            # Response formatters
 │   │
+│   ├── services/                  # Shared domain services
+│   │   └── emailService.js        # SMTP delivery with Handlebars templates
+│   │
 │   ├── validations/               # Input validation rules
 │   │   ├── authValidation.js      # Auth validation rules
 │   │   └── userValidation.js      # User validation rules
+│   │
+│   ├── templates/                 # Handlebars email templates
+│   │   ├── newsletter/            # Newsletter email templates
+│   │   │   └── welcome.hbs        # Welcome email template
+│   │   └── partials/              # Shared template fragments
+│   │       └── footer.hbs         # Email footer partial
 │   │
 │   └── server.js                  # Application entry point
 │
@@ -236,6 +246,19 @@ JWT_EXPIRE=7d
 
 # CORS
 CORS_ORIGIN=http://localhost:3000
+
+# SMTP
+SMTP_HOST=smtp.your-provider.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_smtp_username
+SMTP_PASSWORD=your_smtp_password
+SMTP_FROM_NAME=SkyPrep Team
+SMTP_FROM_EMAIL=no-reply@your-domain.com
+EMAIL_ENABLED=false
+SMTP_VERIFY=true
+EMAIL_PREVIEW_LOG=false
+NEWSLETTER_CTA_URL=https://skyprep.com/resources
 ```
 
 ## 🌟 Best Practices Implemented
@@ -258,7 +281,7 @@ CORS_ORIGIN=http://localhost:3000
 ## 🎯 Next Steps to Enhance
 
 1. **Rate Limiting** - Add express-rate-limit
-2. **Email Service** - Password reset, verification
+2. **Extend Email Service** - Add password reset & verification flows
 3. **File Upload** - Add multer for file handling
 4. **Refresh Tokens** - Implement token refresh
 5. **Pagination** - Add pagination to list endpoints
@@ -286,6 +309,9 @@ ISC
 ---
 
 **Built with ❤️ using Node.js, Express, and MongoDB**
+
+
+
 
 
 

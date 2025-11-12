@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getMe } = require('../controllers/authController');
+const { register, login, getMe, googleLogin } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
-const { registerValidation, loginValidation } = require('../validations/authValidation');
+const { registerValidation, loginValidation, googleLoginValidation } = require('../validations/authValidation');
 const { validateRequest } = require('../middleware/validateRequest');
 
 /**
@@ -60,6 +60,40 @@ router.post('/register', registerValidation, validateRequest, register);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/login', loginValidation, validateRequest, login);
+
+/**
+ * @swagger
+ * /api/v1/auth/google:
+ *   post:
+ *     summary: Login or register with Google
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/GoogleLoginRequest'
+ *     responses:
+ *       200:
+ *         description: Google authentication successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Google authentication failed or email not verified
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post('/google', googleLoginValidation, validateRequest, googleLogin);
 
 /**
  * @swagger

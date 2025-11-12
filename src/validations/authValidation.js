@@ -41,4 +41,12 @@ exports.loginValidation = [
     .withMessage('Password is required')
 ];
 
+// Google Login Validation Rules
+exports.googleLoginValidation = [
+  body('idToken')
+    .trim()
+    .notEmpty()
+    .withMessage('Google ID token is required')
+];
+
 

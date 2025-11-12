@@ -25,17 +25,13 @@ const userSchema = new mongoose.Schema({
     minlength: [6, 'Password must be at least 6 characters'],
     select: false
   },
-  roles: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Role',
-    required: true,
-    validate: {
-      validator: function(roles) {
-        return roles && roles.length > 0;
-      },
-      message: 'User must have at least one role'
-    }
-  }],
+  roles: {
+    type: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Role'
+    }],
+    default: []
+  },
   primaryRole: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Role'

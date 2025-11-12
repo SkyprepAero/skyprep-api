@@ -1,11 +1,26 @@
 // Success Response
-const successResponse = (res, data, message, statusCode = 200) => {
+const successResponse = (res, arg1, arg2, arg3) => {
+  let statusCode = 200;
+  let message = arg2;
+  let data = arg1;
+
+  if (typeof arg1 === 'number') {
+    statusCode = arg1;
+    message = arg2;
+    data = arg3;
+  } else if (typeof arg3 === 'number') {
+    statusCode = arg3;
+  }
+
   const response = {
-    success: true,
-    message
+    success: true
   };
 
-  if (data) {
+  if (message !== undefined && message !== null) {
+    response.message = message;
+  }
+
+  if (data !== undefined && data !== null) {
     response.data = data;
   }
 

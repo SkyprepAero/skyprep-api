@@ -15,7 +15,10 @@ module.exports = {
     TOKEN_EXPIRED: { code: 'AUTH_1004', message: 'Token has expired' },
     UNAUTHORIZED: { code: 'AUTH_1005', message: 'Not authorized to access this resource' },
     ACCOUNT_DEACTIVATED: { code: 'AUTH_1006', message: 'Your account has been deactivated' },
-    ACCOUNT_LOCKED: { code: 'AUTH_1007', message: 'Account is locked due to multiple failed login attempts' }
+    ACCOUNT_LOCKED: { code: 'AUTH_1007', message: 'Account is locked due to multiple failed login attempts' },
+    GOOGLE_AUTH_FAILED: { code: 'AUTH_1008', message: 'Failed to authenticate with Google' },
+    GOOGLE_EMAIL_NOT_VERIFIED: { code: 'AUTH_1009', message: 'Google account email is not verified' },
+    GOOGLE_CONFIG_MISSING: { code: 'AUTH_1010', message: 'Google OAuth configuration is missing' }
   },
 
   // User Errors (2000-2999)

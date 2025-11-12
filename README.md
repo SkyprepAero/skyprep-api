@@ -55,6 +55,19 @@ Before you begin, ensure you have the following installed:
 
    # CORS Configuration
    CORS_ORIGIN=http://localhost:3000
+
+   # SMTP Configuration
+   SMTP_HOST=smtp.your-provider.com
+   SMTP_PORT=587
+   SMTP_SECURE=false
+   SMTP_USER=your_smtp_username
+   SMTP_PASSWORD=your_smtp_password
+   SMTP_FROM_NAME=SkyPrep Team
+   SMTP_FROM_EMAIL=no-reply@your-domain.com
+   EMAIL_ENABLED=false
+   SMTP_VERIFY=true
+   EMAIL_PREVIEW_LOG=false
+   NEWSLETTER_CTA_URL=https://skyprep.com/resources
    ```
 
 4. **Start MongoDB**
@@ -203,6 +216,23 @@ curl -X GET http://localhost:5000/api/v1/auth/me \
 | JWT_SECRET | Secret key for JWT | - |
 | JWT_EXPIRE | JWT expiration time | 7d |
 | CORS_ORIGIN | Allowed CORS origin | * |
+| SMTP_HOST | SMTP server host | - |
+| SMTP_PORT | SMTP server port | 587 |
+| SMTP_SECURE | Use secure (TLS) connection | false |
+| SMTP_USER | SMTP username | - |
+| SMTP_PASSWORD | SMTP password | - |
+| SMTP_FROM_NAME | Display name for outgoing emails | SkyPrep Team |
+| SMTP_FROM_EMAIL | Sender email address | - |
+| EMAIL_ENABLED | Enable/disable email sending | false in development |
+| SMTP_VERIFY | Verify SMTP connection on startup | true |
+| EMAIL_PREVIEW_LOG | Log Nodemailer preview URLs | false |
+| NEWSLETTER_CTA_URL | CTA link used in newsletter emails | https://skyprep.com/resources |
+
+## Email Templates
+
+- Email templates live in `src/templates/emails`.
+- Use `partials` to share repeated fragments (for example, `footer.hbs`).
+- Send an email with a template by calling `emailService.sendEmail` and setting the `template` name (e.g., `newsletter/welcome`) and the `context` object for Handlebars variables.
 
 ## Next Steps
 

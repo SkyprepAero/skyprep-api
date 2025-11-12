@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Welcome to SkyPrep</title>
+  </head>
+  <body style="margin: 0; padding: 0; background-color: #f4f6fb; font-family: 'Segoe UI', Arial, sans-serif;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+      <tr>
+        <td align="center" style="padding: 32px 16px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width: 600px; width: 100%; background: #ffffff; border-radius: 12px; overflow: hidden;">
+            <tr>
+              <td style="padding: 32px;">
+                <h1 style="margin: 0 0 16px; font-size: 28px; color: #1a2a6c;">Hi {{name}}, welcome to SkyPrep! 🎉</h1>
+                <p style="margin: 0 0 16px; font-size: 16px; color: #3b4a67;">
+                  Thanks for subscribing to our newsletter. We’re excited to keep you in the loop with product updates, curated resources, and upcoming events tailored to {{#if interests.length}}{{interests.[0]}}{{else}}your interests{{/if}}.
+                </p>
+                {{#if interests.length}}
+                  <p style="margin: 0 0 16px; font-size: 16px; color: #3b4a67;">
+                    Based on what you shared, we’ll send content related to:
+                  </p>
+                  <ul style="margin: 0 0 24px; padding-left: 20px; font-size: 16px; color: #3b4a67;">
+                    {{#each interests}}
+                      <li style="margin-bottom: 8px;">{{this}}</li>
+                    {{/each}}
+                  </ul>
+                {{/if}}
+                <p style="margin: 0 0 16px; font-size: 16px; color: #3b4a67;">
+                  In the meantime, feel free to explore our latest learning paths or join the community discussions for tips and best practices.
+                </p>
+                <p style="margin: 0 0 24px; font-size: 16px; color: #3b4a67;">
+                  If you ever want to update your preferences or unsubscribe, you can do so from any email footer.
+                </p>
+                <a
+                  href="{{ctaUrl}}"
+                  style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #1a2a6c, #2ecad5); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600;"
+                >
+                  Explore Resources
+                </a>
+              </td>
+            </tr>
+            {{> footer }}
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+
+
+

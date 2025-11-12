@@ -3,6 +3,7 @@ const { asyncHandler } = require('../utils/errorHandler');
 const { successResponse } = require('../utils/response');
 const { HTTP_STATUS, SUCCESS_MESSAGES } = require('../utils/constants');
 const { AppError, ERROR_CODES } = require('../errors');
+const emailService = require('../services/emailService');
 
 // @desc    Subscribe to newsletter
 // @route   POST /api/v1/newsletter/subscribe
@@ -47,6 +48,32 @@ exports.subscribe = asyncHandler(async (req, res, next) => {
     source: source || 'website',
     metadata
   });
+
+  const normalizedInterests = Array.isArray(interests)
+    ? interests
+    : interests
+    ? [interests]
+    : [];
+
+  const ctaUrl =
+    process.env.NEWSLETTER_CTA_URL || 'https://skyprep.com/resources';
+
+  try {
+    await emailService.sendEmail({
+      to: subscriber.email,
+      subject: 'Welcome to the SkyPrep newsletter!',
+      template: 'newsletter/welcome',
+      context: {
+        name: subscriber.name || 'there',
+        interests: normalizedInterests,
+        ctaUrl
+      }
+    });
+  } catch (err) {
+    /* eslint-disable no-console */
+    console.error('Newsletter welcome email failed:', err.message);
+    /* eslint-enable no-console */
+  }
   
   successResponse(res, HTTP_STATUS.CREATED, 'Successfully subscribed to newsletter! 🎉', {
     email: subscriber.email,
@@ -200,6 +227,9 @@ exports.deleteSubscriber = asyncHandler(async (req, res, next) => {
   
   successResponse(res, HTTP_STATUS.OK, 'Subscriber deleted successfully', {});
 });
+
+
+
 
 
 
