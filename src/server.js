@@ -22,17 +22,22 @@ const app = express();
 app.use(helmet()); // Security headers
 // CORS configuration - Allow all origins with credentials
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow all origins (including null for mobile apps, Postman, etc.)
-    callback(null, true);
+  origin(origin, callback) {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    callback(null, origin);
   },
-  credentials: true, // Allow credentials
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  optionsSuccessStatus: 200
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(morgan('dev')); // Logging
 app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
