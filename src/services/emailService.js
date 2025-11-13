@@ -146,7 +146,6 @@ const sendEmail = async ({
   attachments,
   headers,
 }) => {
-  console.log(process.env.SMTP_USER,process.env.SMTP_PASSWORD,process.env.SMTP_HOST,process.env.SMTP_PORT,process.env.SMTP_SECURE);
   if (!emailConfig.enabled) {
     if (emailConfig.logPreview) {
       /* eslint-disable no-console */
