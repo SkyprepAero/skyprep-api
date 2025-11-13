@@ -12,6 +12,12 @@ const Subject = require('./Subject');
 const Chapter = require('./Chapter');
 const Question = require('./Question');
 const Option = require('./Option');
+const Course = require('./Course');
+const Cohort = require('./Cohort');
+const TestSeries = require('./TestSeries');
+const UserTestSeries = require('./UserTestSeries');
+const Book = require('./Book');
+const EmailPasscode = require('./EmailPasscode');
 
 // Export all models
 module.exports = {
@@ -23,7 +29,13 @@ module.exports = {
   Subject,
   Chapter,
   Question,
-  Option
+  Option,
+  Course,
+  Cohort,
+  TestSeries,
+  UserTestSeries,
+  Book,
+  EmailPasscode
 };
 
 // Alternative: You can also use individual exports

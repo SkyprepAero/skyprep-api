@@ -18,7 +18,8 @@ module.exports = {
     ACCOUNT_LOCKED: { code: 'AUTH_1007', message: 'Account is locked due to multiple failed login attempts' },
     GOOGLE_AUTH_FAILED: { code: 'AUTH_1008', message: 'Failed to authenticate with Google' },
     GOOGLE_EMAIL_NOT_VERIFIED: { code: 'AUTH_1009', message: 'Google account email is not verified' },
-    GOOGLE_CONFIG_MISSING: { code: 'AUTH_1010', message: 'Google OAuth configuration is missing' }
+    GOOGLE_CONFIG_MISSING: { code: 'AUTH_1010', message: 'Google OAuth configuration is missing' },
+    SESSION_REVOKED: { code: 'AUTH_1011', message: 'Session has been revoked. Please log in again.' }
   },
 
   // User Errors (2000-2999)
@@ -84,6 +85,17 @@ module.exports = {
     NOT_FOUND: { code: 'SRV_9002', message: 'Requested resource not found' },
     METHOD_NOT_ALLOWED: { code: 'SRV_9003', message: 'HTTP method not allowed' },
     SERVICE_UNAVAILABLE: { code: 'SRV_9004', message: 'Service temporarily unavailable' }
+  },
+
+  // Passcode Errors (10000-10999)
+  PASSCODE: {
+    REQUIRED: { code: 'PASC_10001', message: 'Email passcode verification is required' },
+    INVALID: { code: 'PASC_10002', message: 'Invalid email passcode' },
+    EXPIRED: { code: 'PASC_10003', message: 'Email passcode has expired' },
+    ATTEMPTS_EXCEEDED: { code: 'PASC_10004', message: 'Maximum verification attempts exceeded' },
+    NOT_FOUND: { code: 'PASC_10005', message: 'No active email passcode found. Please request a new code.' },
+    TOO_SOON: { code: 'PASC_10006', message: 'Please wait before requesting another verification code' },
+    ALREADY_VERIFIED: { code: 'PASC_10007', message: 'Email address is already verified' }
   }
 };
 

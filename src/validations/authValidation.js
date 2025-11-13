@@ -1,4 +1,5 @@
 const { body } = require('express-validator');
+const { EMAIL_PASSCODE, VALIDATION } = require('../utils/constants');
 
 // Register Validation Rules
 exports.registerValidation = [
@@ -41,12 +42,78 @@ exports.loginValidation = [
     .withMessage('Password is required')
 ];
 
+// Login Passcode Validation Rules
+exports.loginPasscodeValidation = [
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail(),
+
+  body('passcode')
+    .trim()
+    .notEmpty()
+    .withMessage('Passcode is required')
+    .isLength({ min: EMAIL_PASSCODE.LENGTH, max: EMAIL_PASSCODE.LENGTH })
+    .withMessage(`Passcode must be ${EMAIL_PASSCODE.LENGTH} digits long`)
+    .matches(/^\d+$/)
+    .withMessage('Passcode must contain digits only')
+];
+
 // Google Login Validation Rules
 exports.googleLoginValidation = [
   body('idToken')
     .trim()
     .notEmpty()
     .withMessage('Google ID token is required')
+];
+
+// Forgot Password Request Validation Rules
+exports.forgotPasswordRequestValidation = [
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail()
+];
+
+// Forgot Password Verify Validation Rules
+exports.forgotPasswordVerifyValidation = [
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail(),
+
+  body('passcode')
+    .trim()
+    .notEmpty()
+    .withMessage('Passcode is required')
+    .isLength({ min: EMAIL_PASSCODE.LENGTH, max: EMAIL_PASSCODE.LENGTH })
+    .withMessage(`Passcode must be ${EMAIL_PASSCODE.LENGTH} digits long`)
+    .matches(/^\d+$/)
+    .withMessage('Passcode must contain digits only'),
+];
+
+// Forgot Password Reset Validation Rules
+exports.forgotPasswordResetValidation = [
+  body('resetToken')
+    .notEmpty()
+    .withMessage('Reset token is required'),
+
+  body('newPassword')
+    .notEmpty()
+    .withMessage('New password is required')
+    .isLength({ min: VALIDATION.PASSWORD_MIN_LENGTH })
+    .withMessage(`Password must be at least ${VALIDATION.PASSWORD_MIN_LENGTH} characters long`)
+    .isLength({ max: VALIDATION.PASSWORD_MAX_LENGTH })
+    .withMessage(`Password cannot be more than ${VALIDATION.PASSWORD_MAX_LENGTH} characters`)
 ];
 
 

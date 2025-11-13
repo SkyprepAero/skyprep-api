@@ -1,10 +1,12 @@
-const { randomBytes } = require('crypto');
+const { randomBytes, createHash } = require('crypto');
 const mongoose = require('mongoose');
 const { OAuth2Client } = require('google-auth-library');
-const { User, Role } = require('../models');
-const { generateToken } = require('../config/jwt');
+const { User, Role, EmailPasscode } = require('../models');
+const { generateToken, verifyToken } = require('../config/jwt');
 const { AppError, ERROR_CODES } = require('../errors');
-const { HTTP_STATUS } = require('../utils/constants');
+const { HTTP_STATUS, EMAIL_PASSCODE } = require('../utils/constants');
+const emailService = require('./emailService');
+const emailConfig = require('../config/email');
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 let googleClient = googleClientId ? new OAuth2Client(googleClientId) : null;
@@ -58,6 +60,256 @@ const calculateTokenExpiry = (expiresInOverride = null) => {
     return null;
   }
   return new Date(Date.now() + ttlMs).toISOString();
+};
+
+const normalizeEmail = (value = '') => String(value).trim().toLowerCase();
+
+const generateNumericPasscode = (length = EMAIL_PASSCODE.LENGTH) => {
+  const digits = [];
+  const buffer = randomBytes(length);
+  for (let index = 0; index < length; index += 1) {
+    digits.push((buffer[index] % 10).toString());
+  }
+  return digits.join('');
+};
+
+const hashPasscode = (passcode) => createHash('sha256').update(String(passcode)).digest('hex');
+
+const buildMetadataMap = (metadata = {}) => {
+  const map = {};
+  Object.entries(metadata).forEach(([key, value]) => {
+    if (value === undefined || value === null) {
+      return;
+    }
+    map[key] = typeof value === 'string' ? value : String(value);
+  });
+  return map;
+};
+
+const isProductionEnvironment = () =>
+  (process.env.NODE_ENV || '').trim().toLowerCase() === 'production';
+
+const createAndDispatchEmailPasscode = async ({
+  email,
+  user,
+  purpose = EMAIL_PASSCODE.PURPOSES.GENERIC,
+  metadata,
+  skipCooldown = false,
+  mailTemplate = 'verification/passcode',
+  mailSubject = 'Your verification code',
+  mailContext = {}
+}) => {
+  const normalizedEmail = normalizeEmail(email || user?.email);
+
+  if (!normalizedEmail) {
+    throw new AppError(ERROR_CODES.VALIDATION.INVALID_EMAIL, HTTP_STATUS.BAD_REQUEST);
+  }
+
+  const now = new Date();
+  const cooldownMs = (EMAIL_PASSCODE.RESEND_COOLDOWN_SECONDS || 0) * 1000;
+
+  const activePasscode = await EmailPasscode.findOne({
+    email: normalizedEmail,
+    purpose,
+    consumedAt: null
+  }).sort({ createdAt: -1 });
+
+  if (
+    !skipCooldown &&
+    cooldownMs > 0 &&
+    activePasscode &&
+    now.getTime() - activePasscode.createdAt.getTime() < cooldownMs
+  ) {
+    const resendAvailableAt = new Date(activePasscode.createdAt.getTime() + cooldownMs);
+    throw new AppError(
+      ERROR_CODES.PASSCODE.TOO_SOON,
+      HTTP_STATUS.TOO_MANY_REQUESTS,
+      { resendAvailableAt }
+    );
+  }
+
+  await EmailPasscode.deleteMany({ email: normalizedEmail, purpose });
+
+  const rawPasscode = generateNumericPasscode(EMAIL_PASSCODE.LENGTH);
+  const expiresAt = new Date(
+    now.getTime() + (EMAIL_PASSCODE.EXPIRY_MINUTES || 10) * 60 * 1000
+  );
+
+  const passcodeDoc = await EmailPasscode.create({
+    email: normalizedEmail,
+    codeHash: hashPasscode(rawPasscode),
+    purpose,
+    expiresAt,
+    attemptCount: 0,
+    maxAttempts: EMAIL_PASSCODE.MAX_ATTEMPTS || 5,
+    metadata: buildMetadataMap({
+      ...metadata,
+      userId: user?._id ? user._id.toString() : metadata?.userId
+    })
+  });
+
+  try {
+    await emailService.sendEmail({
+      to: normalizedEmail,
+      subject: mailSubject,
+      template: mailTemplate,
+      context: {
+        name: user?.name || normalizedEmail,
+        code: rawPasscode,
+        expiresInMinutes: EMAIL_PASSCODE.EXPIRY_MINUTES || 10,
+        ...mailContext
+      }
+    });
+  } catch (error) {
+    await EmailPasscode.deleteOne({ _id: passcodeDoc._id });
+    throw error;
+  }
+
+  const response = {
+    email: normalizedEmail,
+    expiresAt,
+    resendAvailableAt:
+      cooldownMs > 0 ? new Date(passcodeDoc.createdAt.getTime() + cooldownMs) : null
+  };
+
+  if (!isProductionEnvironment() || !emailConfig.enabled) {
+    response.previewCode = rawPasscode;
+  }
+
+  return response;
+};
+
+const validateAndConsumeEmailPasscode = async ({
+  email,
+  code,
+  purpose = EMAIL_PASSCODE.PURPOSES.LOGIN
+}) => {
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!normalizedEmail) {
+    throw new AppError(ERROR_CODES.VALIDATION.INVALID_EMAIL, HTTP_STATUS.BAD_REQUEST);
+  }
+
+  const passcodeDoc = await EmailPasscode.findOne({
+    email: normalizedEmail,
+    purpose,
+    consumedAt: null
+  }).sort({ createdAt: -1 });
+
+  if (!passcodeDoc) {
+    throw new AppError(ERROR_CODES.PASSCODE.NOT_FOUND, HTTP_STATUS.BAD_REQUEST);
+  }
+
+  const now = new Date();
+
+  if (passcodeDoc.expiresAt.getTime() <= now.getTime()) {
+    passcodeDoc.consumedAt = now;
+    await passcodeDoc.save();
+    throw new AppError(ERROR_CODES.PASSCODE.EXPIRED, HTTP_STATUS.BAD_REQUEST);
+  }
+
+  if (passcodeDoc.attemptCount >= passcodeDoc.maxAttempts) {
+    throw new AppError(ERROR_CODES.PASSCODE.ATTEMPTS_EXCEEDED, HTTP_STATUS.UNAUTHORIZED);
+  }
+
+  const attemptsRemainingBefore = passcodeDoc.maxAttempts - passcodeDoc.attemptCount;
+  passcodeDoc.attemptCount += 1;
+
+  const isMatch = passcodeDoc.codeHash === hashPasscode(code);
+
+  if (!isMatch) {
+    const attemptsRemaining = Math.max(passcodeDoc.maxAttempts - passcodeDoc.attemptCount, 0);
+    await passcodeDoc.save();
+    throw new AppError(
+      ERROR_CODES.PASSCODE.INVALID,
+      HTTP_STATUS.UNAUTHORIZED,
+      { attemptsRemaining, attemptsRemainingBefore }
+    );
+  }
+
+  passcodeDoc.consumedAt = now;
+  await passcodeDoc.save();
+
+  await EmailPasscode.deleteMany({
+    email: normalizedEmail,
+    purpose,
+    consumedAt: null,
+    _id: { $ne: passcodeDoc._id }
+  });
+
+  return passcodeDoc;
+};
+
+const issueNewSession = async ({
+  user,
+  allPermissions = [],
+  ipAddress = null,
+  userAgent = null
+}) => {
+  const sessionNonce = randomBytes(32).toString('hex');
+  const issuedAt = new Date();
+
+  user.sessionNonce = sessionNonce;
+  user.sessionIssuedAt = issuedAt;
+  user.lastLoginAt = issuedAt;
+
+  if (ipAddress) {
+    user.lastLoginIp = ipAddress;
+  }
+
+  if (userAgent) {
+    user.lastLoginUserAgent = userAgent;
+  }
+
+  await user.save({ validateBeforeSave: false });
+
+  const tokenPayload = {
+    id: user._id,
+    sessionNonce,
+    roles: user.roles.map(r => r.name),
+    primaryRole: user.primaryRole?.name
+  };
+
+  if (Array.isArray(allPermissions) && allPermissions.length > 0) {
+    tokenPayload.permissions = allPermissions;
+  }
+
+  const token = generateToken(tokenPayload);
+
+  return {
+    token,
+    tokenExpiresAt: calculateTokenExpiry(),
+    sessionNonce,
+    issuedAt
+  };
+};
+
+const generatePasswordResetToken = async (user) => {
+  const resetNonce = randomBytes(32).toString('hex');
+  const issuedAt = new Date();
+
+  user.passwordResetNonce = resetNonce;
+  user.passwordResetIssuedAt = issuedAt;
+  await user.save({ validateBeforeSave: false });
+
+  const expiresMinutes = EMAIL_PASSCODE.EXPIRY_MINUTES || 10;
+  const expiresIn = `${expiresMinutes}m`;
+
+  const token = generateToken(
+    {
+      type: 'password_reset',
+      userId: user._id,
+      email: user.email,
+      resetNonce
+    },
+    expiresIn
+  );
+
+  return {
+    token,
+    expiresAt: new Date(issuedAt.getTime() + expiresMinutes * 60 * 1000),
+    resetNonce
+  };
 };
 
 const getGoogleClient = () => {
@@ -221,7 +473,7 @@ const buildUserProfile = (user, options = {}) => {
   return profile;
 };
 
-const registerUser = async ({ name, email, password, roles: requestedRoles, primaryRole }) => {
+const registerUser = async ({ name, email, password, phoneNumber, city, roles: requestedRoles, primaryRole }) => {
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
@@ -281,6 +533,8 @@ const registerUser = async ({ name, email, password, roles: requestedRoles, prim
 
   const userPayload = {
     name,
+    phoneNumber,
+    city,
     email,
     password,
     roles: finalRoles.map(role => role._id)
@@ -293,17 +547,13 @@ const registerUser = async ({ name, email, password, roles: requestedRoles, prim
   const user = await User.create(userPayload);
 
   await populateUserForAuth(user);
-
-  const token = generateToken({
-    id: user._id,
-    roles: user.roles.map(r => r.name),
-    primaryRole: user.primaryRole?.name
-  });
+  const allPermissions = await user.getAllPermissions();
+  const session = await issueNewSession({ user, allPermissions });
 
   return {
     user: buildUserProfile(user),
-    token,
-    tokenExpiresAt: calculateTokenExpiry()
+    token: session.token,
+    tokenExpiresAt: session.tokenExpiresAt
   };
 };
 
@@ -325,14 +575,13 @@ const loginWithPassword = async ({ email, password }) => {
   }
 
   await populateUserForAuth(user);
-
   const allPermissions = await user.getAllPermissions();
 
-  const token = generateToken({
-    id: user._id,
-    roles: user.roles.map(r => r.name),
-    primaryRole: user.primaryRole?.name,
-    permissions: allPermissions
+  const passcodeInfo = await createAndDispatchEmailPasscode({
+    user,
+    purpose: EMAIL_PASSCODE.PURPOSES.LOGIN,
+    metadata: { trigger: EMAIL_PASSCODE.PURPOSES.LOGIN },
+    skipCooldown: true
   });
 
   return {
@@ -341,8 +590,16 @@ const loginWithPassword = async ({ email, password }) => {
       includePermissions: true,
       permissions: allPermissions
     }),
-    token,
-    tokenExpiresAt: calculateTokenExpiry()
+    token: null,
+    tokenExpiresAt: null,
+    requiresPasscode: true,
+    verification: {
+      purpose: EMAIL_PASSCODE.PURPOSES.LOGIN,
+      expiresAt: passcodeInfo.expiresAt,
+      resendAvailableAt: passcodeInfo.resendAvailableAt,
+      email: passcodeInfo.email,
+      ...(passcodeInfo.previewCode && { previewCode: passcodeInfo.previewCode })
+    }
   };
 };
 
@@ -359,7 +616,7 @@ const getCurrentUserProfile = async (user, { isSuperAdmin = false } = {}) => {
   });
 };
 
-const loginWithGoogle = async ({ idToken }) => {
+const loginWithGoogle = async ({ idToken, ipAddress = null, userAgent = null }) => {
   const client = getGoogleClient();
 
   let payload;
@@ -410,12 +667,7 @@ const loginWithGoogle = async ({ idToken }) => {
   await populateUserForAuth(user);
   const allPermissions = await user.getAllPermissions();
 
-  const token = generateToken({
-    id: user._id,
-    roles: user.roles.map(r => r.name),
-    primaryRole: user.primaryRole?.name,
-    permissions: allPermissions
-  });
+  const session = await issueNewSession({ user, allPermissions, ipAddress, userAgent });
 
   return {
     user: buildUserProfile(user, {
@@ -423,8 +675,188 @@ const loginWithGoogle = async ({ idToken }) => {
       includePermissions: true,
       permissions: allPermissions
     }),
-    token,
-    tokenExpiresAt: calculateTokenExpiry()
+    token: session.token,
+    tokenExpiresAt: session.tokenExpiresAt
+  };
+};
+
+const verifyLoginWithPasscode = async ({ email, passcode, ipAddress = null, userAgent = null }) => {
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!normalizedEmail) {
+    throw new AppError(ERROR_CODES.VALIDATION.INVALID_EMAIL, HTTP_STATUS.BAD_REQUEST);
+  }
+
+  const user = await User.findOne({ email: normalizedEmail });
+
+  if (!user) {
+    throw new AppError(ERROR_CODES.AUTH.INVALID_CREDENTIALS, HTTP_STATUS.UNAUTHORIZED);
+  }
+
+  if (!user.isActive) {
+    throw new AppError(ERROR_CODES.AUTH.ACCOUNT_DEACTIVATED, HTTP_STATUS.UNAUTHORIZED);
+  }
+
+  const passcodeDoc = await validateAndConsumeEmailPasscode({
+    email: normalizedEmail,
+    code: passcode,
+    purpose: EMAIL_PASSCODE.PURPOSES.LOGIN
+  });
+
+  const metadataUserId = passcodeDoc.metadata?.get
+    ? passcodeDoc.metadata.get('userId')
+    : passcodeDoc.metadata?.userId;
+
+  if (metadataUserId && user._id.toString() !== metadataUserId) {
+    throw new AppError(ERROR_CODES.PASSCODE.INVALID, HTTP_STATUS.UNAUTHORIZED);
+  }
+
+  await populateUserForAuth(user);
+  const allPermissions = await user.getAllPermissions();
+  const session = await issueNewSession({ user, allPermissions, ipAddress, userAgent });
+
+  return {
+    user: buildUserProfile(user, {
+      includeRoleLevel: true,
+      includePermissions: true,
+      permissions: allPermissions
+    }),
+    token: session.token,
+    tokenExpiresAt: session.tokenExpiresAt,
+    requiresPasscode: false,
+    verification: {
+      verifiedAt: new Date().toISOString()
+    }
+  };
+};
+
+const requestPasswordResetPasscode = async ({ email }) => {
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!normalizedEmail) {
+    throw new AppError(ERROR_CODES.VALIDATION.INVALID_EMAIL, HTTP_STATUS.BAD_REQUEST);
+  }
+
+  const user = await User.findOne({ email: normalizedEmail });
+
+  if (!user) {
+    return {
+      requiresPasscode: true,
+      verification: {
+        purpose: EMAIL_PASSCODE.PURPOSES.PASSWORD_RESET,
+        email: normalizedEmail,
+        expiresAt: null,
+        resendAvailableAt: null
+      }
+    };
+  }
+
+  const passcodeInfo = await createAndDispatchEmailPasscode({
+    user,
+    purpose: EMAIL_PASSCODE.PURPOSES.PASSWORD_RESET,
+    metadata: {
+      trigger: EMAIL_PASSCODE.PURPOSES.PASSWORD_RESET,
+      userId: user._id.toString()
+    },
+    mailTemplate: 'password-reset/passcode',
+    mailSubject: 'Reset your password',
+    mailContext: {
+      actionLabel: 'reset your password'
+    }
+  });
+
+  return {
+    requiresPasscode: true,
+    verification: {
+      purpose: EMAIL_PASSCODE.PURPOSES.PASSWORD_RESET,
+      email: passcodeInfo.email,
+      expiresAt: passcodeInfo.expiresAt,
+      resendAvailableAt: passcodeInfo.resendAvailableAt,
+      ...(passcodeInfo.previewCode && { previewCode: passcodeInfo.previewCode })
+    }
+  };
+};
+
+const verifyPasswordResetPasscode = async ({ email, passcode }) => {
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!normalizedEmail) {
+    throw new AppError(ERROR_CODES.VALIDATION.INVALID_EMAIL, HTTP_STATUS.BAD_REQUEST);
+  }
+
+  const user = await User.findOne({ email: normalizedEmail });
+
+  if (!user) {
+    throw new AppError(ERROR_CODES.PASSCODE.INVALID, HTTP_STATUS.UNAUTHORIZED);
+  }
+
+  const passcodeDoc = await validateAndConsumeEmailPasscode({
+    email: normalizedEmail,
+    code: passcode,
+    purpose: EMAIL_PASSCODE.PURPOSES.PASSWORD_RESET
+  });
+
+  const metadataUserId = passcodeDoc.metadata?.get
+    ? passcodeDoc.metadata.get('userId')
+    : passcodeDoc.metadata?.userId;
+
+  if (metadataUserId && user._id.toString() !== metadataUserId) {
+    throw new AppError(ERROR_CODES.PASSCODE.INVALID, HTTP_STATUS.UNAUTHORIZED);
+  }
+
+  const tokenInfo = await generatePasswordResetToken(user);
+
+  return {
+    email: normalizedEmail,
+    resetToken: tokenInfo.token,
+    resetTokenExpiresAt: tokenInfo.expiresAt
+  };
+};
+
+const resetPasswordWithToken = async ({
+  resetToken,
+  newPassword,
+  ipAddress = null,
+  userAgent = null
+}) => {
+  let decoded;
+  try {
+    decoded = verifyToken(resetToken);
+  } catch (error) {
+    throw new AppError(ERROR_CODES.AUTH.TOKEN_INVALID, HTTP_STATUS.UNAUTHORIZED);
+  }
+
+  if (!decoded || decoded.type !== 'password_reset' || !decoded.userId || !decoded.resetNonce) {
+    throw new AppError(ERROR_CODES.AUTH.TOKEN_INVALID, HTTP_STATUS.UNAUTHORIZED);
+  }
+
+  const user = await User.findById(decoded.userId).select('+password');
+
+  if (!user) {
+    throw new AppError(ERROR_CODES.AUTH.INVALID_CREDENTIALS, HTTP_STATUS.UNAUTHORIZED);
+  }
+
+  if (!user.passwordResetNonce || user.passwordResetNonce !== decoded.resetNonce) {
+    throw new AppError(ERROR_CODES.PASSCODE.INVALID, HTTP_STATUS.UNAUTHORIZED);
+  }
+
+  user.password = newPassword;
+  user.passwordResetNonce = null;
+  user.passwordResetIssuedAt = null;
+  await user.save({ validateBeforeSave: false });
+
+  await populateUserForAuth(user);
+  const allPermissions = await user.getAllPermissions();
+  const session = await issueNewSession({ user, allPermissions, ipAddress, userAgent });
+
+  return {
+    user: buildUserProfile(user, {
+      includeRoleLevel: true,
+      includePermissions: true,
+      permissions: allPermissions
+    }),
+    token: session.token,
+    tokenExpiresAt: session.tokenExpiresAt
   };
 };
 
@@ -432,7 +864,11 @@ module.exports = {
   registerUser,
   loginWithPassword,
   getCurrentUserProfile,
-  loginWithGoogle
+  loginWithGoogle,
+  verifyLoginWithPasscode,
+  requestPasswordResetPasscode,
+  verifyPasswordResetPasscode,
+  resetPasswordWithToken
 };
 
 

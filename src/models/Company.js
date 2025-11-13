@@ -11,8 +11,7 @@ const companySchema = new mongoose.Schema({
     type: String,
     unique: true,
     lowercase: true,
-    trim: true,
-    index: true
+    trim: true
   },
   email: {
     type: String,
@@ -120,7 +119,6 @@ const companySchema = new mongoose.Schema({
 
 // Index for faster searches
 companySchema.index({ name: 1 });
-companySchema.index({ slug: 1 });
 companySchema.index({ status: 1 });
 companySchema.index({ owner: 1 });
 

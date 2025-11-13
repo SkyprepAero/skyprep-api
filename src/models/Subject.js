@@ -11,6 +11,16 @@ const subjectSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  focusOneCost: {
+    type: Number,
+    min: [0, 'Focus One cost cannot be negative'],
+    default: 0
+  },
+  cohortCost: {
+    type: Number,
+    min: [0, 'Cohort cost cannot be negative'],
+    default: 0
+  },
   defaultMarks: {
     type: Number,
     default: 0,

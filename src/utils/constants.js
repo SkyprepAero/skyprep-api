@@ -7,6 +7,7 @@ exports.HTTP_STATUS = {
   FORBIDDEN: 403,
   NOT_FOUND: 404,
   CONFLICT: 409,
+  TOO_MANY_REQUESTS: 429,
   INTERNAL_SERVER_ERROR: 500
 };
 
@@ -68,6 +69,34 @@ exports.VALIDATION = {
   EMAIL_REGEX: /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/
 };
 
+const parseIntegerSetting = (value, fallback) => {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    return fallback;
+  }
+
+  return parsed;
+};
+
+// Email Passcode Configuration
+exports.EMAIL_PASSCODE = {
+  LENGTH: parseIntegerSetting(process.env.EMAIL_PASSCODE_LENGTH, 6),
+  EXPIRY_MINUTES: parseIntegerSetting(process.env.EMAIL_PASSCODE_EXPIRY_MINUTES, 10),
+  RESEND_COOLDOWN_SECONDS: parseIntegerSetting(process.env.EMAIL_PASSCODE_RESEND_COOLDOWN_SECONDS, 60),
+  MAX_ATTEMPTS: parseIntegerSetting(process.env.EMAIL_PASSCODE_MAX_ATTEMPTS, 5),
+  PURPOSES: {
+    REGISTRATION: 'registration',
+    LOGIN: 'login',
+    PASSWORD_RESET: 'password_reset',
+    EMAIL_UPDATE: 'email_update',
+    GENERIC: 'generic'
+  }
+};
+
 // Error Messages
 exports.ERROR_MESSAGES = {
   USER_NOT_FOUND: 'User not found',
@@ -89,6 +118,11 @@ exports.SUCCESS_MESSAGES = {
   LOGIN_SUCCESS: 'Login successful',
   USER_CREATED: 'User created successfully',
   USER_UPDATED: 'User updated successfully',
-  USER_DELETED: 'User deleted successfully'
+  USER_DELETED: 'User deleted successfully',
+  EMAIL_PASSCODE_SENT: 'Verification code sent successfully',
+  EMAIL_VERIFIED: 'Email verified successfully',
+  PASSWORD_RESET_CODE_SENT: 'Password reset instructions sent if the email exists',
+  PASSWORD_RESET_CODE_VERIFIED: 'Verification successful. You can now reset your password.',
+  PASSWORD_RESET_SUCCESS: 'Password reset successful'
 };
 

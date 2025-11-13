@@ -63,20 +63,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// CORS debug endpoint
-app.get('/cors-debug', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'CORS is working',
-    origin: req.get('Origin'),
-    headers: req.headers,
-    corsOrigin: process.env.CORS_ORIGIN,
-    allowedOrigins: process.env.CORS_ORIGIN 
-      ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
-      : ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000']
-  });
-});
-
 // Root endpoint
 app.get('/', (req, res) => {
   res.status(200).json({

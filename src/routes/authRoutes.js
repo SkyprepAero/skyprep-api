@@ -1,8 +1,25 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getMe, googleLogin } = require('../controllers/authController');
+const {
+  register,
+  login,
+  getMe,
+  googleLogin,
+  verifyLoginPasscode,
+  requestPasswordResetPasscode,
+  verifyPasswordResetPasscode,
+  resetPasswordWithToken
+} = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
-const { registerValidation, loginValidation, googleLoginValidation } = require('../validations/authValidation');
+const {
+  registerValidation,
+  loginValidation,
+  loginPasscodeValidation,
+  googleLoginValidation,
+  forgotPasswordRequestValidation,
+  forgotPasswordVerifyValidation,
+  forgotPasswordResetValidation
+} = require('../validations/authValidation');
 const { validateRequest } = require('../middleware/validateRequest');
 
 /**
@@ -60,6 +77,121 @@ router.post('/register', registerValidation, validateRequest, register);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/login', loginValidation, validateRequest, login);
+
+/**
+ * @swagger
+ * /api/v1/auth/login/passcode:
+ *   post:
+ *     summary: Verify login passcode
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LoginPasscodeRequest'
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       400:
+ *         description: Passcode not found or expired
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Invalid passcode or too many attempts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post('/login/passcode', loginPasscodeValidation, validateRequest, verifyLoginPasscode);
+
+/**
+ * @swagger
+ * /api/v1/auth/forgot-password:
+ *   post:
+ *     summary: Request passcode to reset password
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ForgotPasswordRequest'
+ *     responses:
+ *       200:
+ *         description: Passcode sent if email exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ */
+router.post(
+  '/forgot-password',
+  forgotPasswordRequestValidation,
+  validateRequest,
+  requestPasswordResetPasscode
+);
+
+/**
+ * @swagger
+ * /api/v1/auth/forgot-password/verify:
+ *   post:
+ *     summary: Verify password reset passcode
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ForgotPasswordVerify'
+ *     responses:
+ *       200:
+ *         description: Passcode verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ */
+router.post(
+  '/forgot-password/verify',
+  forgotPasswordVerifyValidation,
+  validateRequest,
+  verifyPasswordResetPasscode
+);
+
+/**
+ * @swagger
+ * /api/v1/auth/forgot-password/reset:
+ *   post:
+ *     summary: Reset password using reset token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ForgotPasswordReset'
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ */
+router.post(
+  '/forgot-password/reset',
+  forgotPasswordResetValidation,
+  validateRequest,
+  resetPasswordWithToken
+);
 
 /**
  * @swagger

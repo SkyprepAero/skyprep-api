@@ -1,12 +1,110 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+const enrollmentStatusEnum = ['pending', 'active', 'completed', 'withdrawn', 'cancelled'];
+
+const subjectPricingSchema = new mongoose.Schema({
+  subject: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subject',
+    required: true
+  },
+  cost: {
+    type: Number,
+    min: [0, 'Subject cost cannot be negative'],
+    required: true
+  }
+}, { _id: false });
+
+const focusOneEnrollmentSchema = new mongoose.Schema({
+  course: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course',
+    required: true
+  },
+  status: {
+    type: String,
+    enum: enrollmentStatusEnum,
+    default: 'active'
+  },
+  enrolledAt: {
+    type: Date,
+    default: () => new Date()
+  },
+  startedAt: {
+    type: Date,
+    default: null
+  },
+  endedAt: {
+    type: Date,
+    default: null
+  },
+  subjectPricing: {
+    type: [subjectPricingSchema],
+    default: []
+  },
+  metadata: {
+    type: Map,
+    of: mongoose.Schema.Types.Mixed,
+    default: {}
+  }
+}, { _id: false });
+
+const cohortEnrollmentSchema = new mongoose.Schema({
+  cohort: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Cohort',
+    required: true
+  },
+  status: {
+    type: String,
+    enum: enrollmentStatusEnum,
+    default: 'active'
+  },
+  enrolledAt: {
+    type: Date,
+    default: () => new Date()
+  },
+  startedAt: {
+    type: Date,
+    default: null
+  },
+  endedAt: {
+    type: Date,
+    default: null
+  },
+  joinedViaWaitlist: {
+    type: Boolean,
+    default: false
+  },
+  subjectPricing: {
+    type: [subjectPricingSchema],
+    default: []
+  },
+  metadata: {
+    type: Map,
+    of: mongoose.Schema.Types.Mixed,
+    default: {}
+  }
+}, { _id: false });
+
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
     required: [true, 'Please provide a name'],
     trim: true,
     maxlength: [50, 'Name cannot be more than 50 characters']
+  },
+  phoneNumber: {
+    type: String,
+    required: [true, 'Please provide a phone number'],
+    trim: true,
+    maxlength: [15, 'Phone number cannot be more than 15 characters']
+  },
+  city: {
+    type: String,
+    trim: true,
+    maxlength: [50, 'City cannot be more than 50 characters']
   },
   email: {
     type: String,
@@ -50,6 +148,49 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  focusOneEnrollment: {
+    type: focusOneEnrollmentSchema,
+    default: null
+  },
+  cohortEnrollment: {
+    type: cohortEnrollmentSchema,
+    default: null
+  },
+  testSeriesEnrollments: {
+    type: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'UserTestSeries'
+    }],
+    default: []
+  },
+  lastLoginAt: {
+    type: Date,
+    default: null
+  },
+  lastLoginIp: {
+    type: String,
+    default: null
+  },
+  lastLoginUserAgent: {
+    type: String,
+    default: null
+  },
+  sessionNonce: {
+    type: String,
+    default: null
+  },
+  sessionIssuedAt: {
+    type: Date,
+    default: null
+  },
+  passwordResetNonce: {
+    type: String,
+    default: null
+  },
+  passwordResetIssuedAt: {
+    type: Date,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -62,6 +203,40 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
+  if (this.focusOneEnrollment && this.cohortEnrollment) {
+    return next(new Error('User cannot have both focus one and cohort enrollments simultaneously'));
+  }
+
+  if (this.isModified('focusOneEnrollment') && this.focusOneEnrollment) {
+    try {
+      const Course = mongoose.model('Course');
+      const course = await Course.findById(this.focusOneEnrollment.course);
+
+      if (!course) {
+        return next(new Error('Invalid focus one course reference'));
+      }
+
+      if (course.type !== 'focus_one') {
+        return next(new Error('Focus one enrollment must reference a course with type "focus_one"'));
+      }
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  if (this.isModified('cohortEnrollment') && this.cohortEnrollment) {
+    try {
+      const Cohort = mongoose.model('Cohort');
+      const cohort = await Cohort.findById(this.cohortEnrollment.cohort);
+
+      if (!cohort) {
+        return next(new Error('Invalid cohort reference'));
+      }
+    } catch (error) {
+      return next(error);
+    }
+  }
+
   if (!this.isModified('password')) {
     return next();
   }
