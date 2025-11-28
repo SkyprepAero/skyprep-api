@@ -9,7 +9,7 @@ const emailService = require('../services/emailService');
 // @route   POST /api/v1/newsletter/subscribe
 // @access  Public
 exports.subscribe = asyncHandler(async (req, res, next) => {
-  const { email, name, interests, source } = req.body;
+  const { email, name, interests, topic, source } = req.body;
   
   // Get metadata
   const metadata = {
@@ -45,6 +45,7 @@ exports.subscribe = asyncHandler(async (req, res, next) => {
     email,
     name,
     interests,
+    topic,
     source: source || 'website',
     metadata
   });

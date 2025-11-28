@@ -18,6 +18,7 @@ const TestSeries = require('./TestSeries');
 const UserTestSeries = require('./UserTestSeries');
 const Book = require('./Book');
 const EmailPasscode = require('./EmailPasscode');
+const Lead = require('./Lead');
 
 // Export all models
 module.exports = {
@@ -35,7 +36,8 @@ module.exports = {
   TestSeries,
   UserTestSeries,
   Book,
-  EmailPasscode
+  EmailPasscode,
+  Lead
 };
 
 // Alternative: You can also use individual exports

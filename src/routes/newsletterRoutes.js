@@ -43,9 +43,11 @@ const { validateRequest } = require('../middleware/validateRequest');
  *                 items:
  *                   type: string
  *                 example: ["product-updates", "news"]
+ *               topic:
+ *                 type: string
+ *                 example: "FocusONE"
  *               source:
  *                 type: string
- *                 enum: [website, landing-page, api, manual]
  *                 example: website
  *     responses:
  *       201:

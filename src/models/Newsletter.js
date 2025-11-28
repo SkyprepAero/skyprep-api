@@ -25,13 +25,19 @@ const newsletterSchema = new mongoose.Schema({
   },
   source: {
     type: String,
-    enum: ['website', 'landing-page', 'api', 'manual'],
+    trim: true,
+    lowercase: true,
     default: 'website'
   },
   interests: [{
     type: String,
     trim: true
   }],
+  topic: {
+    type: String,
+    trim: true,
+    default: 'General'
+  },
   metadata: {
     ipAddress: String,
     userAgent: String,

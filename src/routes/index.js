@@ -10,6 +10,7 @@ const subjectRoutes = require('./subjectRoutes');
 const chapterRoutes = require('./chapterRoutes');
 const questionRoutes = require('./questionRoutes');
 const optionRoutes = require('./optionRoutes');
+const leadRoutes = require('./leadRoutes');
 
 // Mount routes
 router.use('/auth', authRoutes);
@@ -20,6 +21,7 @@ router.use('/subjects', subjectRoutes);
 router.use('/chapters', chapterRoutes);
 router.use('/questions', questionRoutes);
 router.use('/options', optionRoutes);
+router.use('/leads', leadRoutes);
 
 module.exports = router;
 

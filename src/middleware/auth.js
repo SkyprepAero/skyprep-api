@@ -39,7 +39,7 @@ exports.protect = asyncHandler(async (req, res, next) => {
     if (!req.user.isActive) {
       throw new AppError(ERROR_CODES.AUTH.ACCOUNT_DEACTIVATED, HTTP_STATUS.UNAUTHORIZED);
     }
-
+    
     // Enforce single active session
     if (!decoded.sessionNonce || !req.user.sessionNonce || decoded.sessionNonce !== req.user.sessionNonce) {
       throw new AppError(ERROR_CODES.AUTH.SESSION_REVOKED, HTTP_STATUS.UNAUTHORIZED);

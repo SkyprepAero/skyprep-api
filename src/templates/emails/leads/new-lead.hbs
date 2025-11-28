@@ -1,0 +1,70 @@
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6fb;margin:0;padding:24px 0;font-family:'Segoe UI',Arial,sans-serif;">
+  <tr>
+    <td>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;margin:0 auto;background-color:#ffffff;border-radius:12px;box-shadow:0 12px 30px rgba(20,27,45,0.12);overflow:hidden;">
+        <tr>
+          <td style="background:linear-gradient(135deg,#1f3b82,#3d7bf7);padding:28px 32px;color:#ffffff;">
+            <h1 style="margin:0;font-size:22px;">New Lead Submission</h1>
+            <p style="margin:6px 0 0;font-size:13px;letter-spacing:0.5px;text-transform:uppercase;">
+              {{source}} • {{submittedAt}}
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:28px 32px;color:#1a1f36;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+              <tr>
+                <td style="padding:8px 0;font-weight:600;width:32%;">Name</td>
+                <td style="padding:8px 0;color:#4d5775;">{{name}}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0;font-weight:600;">Email</td>
+                <td style="padding:8px 0;color:#4d5775;">{{email}}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0;font-weight:600;">Phone</td>
+                <td style="padding:8px 0;color:#4d5775;">{{phone}}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0;font-weight:600;">Topic</td>
+                <td style="padding:8px 0;color:#4d5775;">{{topic}}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px 0;font-weight:600;vertical-align:top;">Message</td>
+                <td style="padding:8px 0;color:#1a1f36;white-space:pre-line;background-color:#f7f8fd;border-radius:8px;padding:16px;">{{message}}</td>
+              </tr>
+            </table>
+
+            <hr style="border:none;border-top:1px solid #edf0fb;margin:28px 0;">
+
+            <h3 style="margin:0 0 12px;font-size:15px;color:#1f3b82;">Submission Details</h3>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;color:#4d5775;">
+              <tr>
+                <td style="padding:6px 0;font-weight:600;width:32%;">Source</td>
+                <td style="padding:6px 0;text-transform:capitalize;">{{source}}</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 0;font-weight:600;">Client Timestamp</td>
+                <td style="padding:6px 0;">{{clientTimestamp}}</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 0;font-weight:600;">Referrer</td>
+                <td style="padding:6px 0;">{{referrer}}</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 0;font-weight:600;">User Agent</td>
+                <td style="padding:6px 0;">{{userAgent}}</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 0;font-weight:600;">IP Address</td>
+                <td style="padding:6px 0;">{{ipAddress}}</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        {{> footer}}
+      </table>
+    </td>
+  </tr>
+</table>
+
