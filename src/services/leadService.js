@@ -80,7 +80,16 @@ const createLead = async ({
     }
   };
 
-  const lead = await Lead.create(leadPayload);
+  let lead;
+  try {
+    lead = await Lead.create(leadPayload);
+  } catch (error) {
+    throw new AppError(
+      ERROR_CODES.SERVER.INTERNAL_ERROR,
+      HTTP_STATUS.INTERNAL_SERVER_ERROR,
+      { message: 'Unable to store lead at this time', details: error.message }
+    );
+  }
 
   if (!lead) {
     throw new AppError(
