@@ -20,18 +20,46 @@ const app = express();
 
 // Middleware
 app.use(helmet()); // Security headers
-// CORS configuration - Allow all origins with credentials
+
+// CORS configuration - Allow specific origins with credentials
+const allowedOrigins = [
+  'https://skyprep-marketing.onrender.com',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001'
+];
+
+// Add CORS_ORIGIN from environment if set
+if (process.env.CORS_ORIGIN) {
+  const envOrigins = process.env.CORS_ORIGIN.split(',').map(origin => origin.trim());
+  allowedOrigins.push(...envOrigins);
+}
+
 const corsOptions = {
   origin(origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman, curl)
     if (!origin) {
       callback(null, true);
       return;
     }
 
-    callback(null, origin);
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      // In development, allow all origins for easier testing
+      if (process.env.NODE_ENV === 'development') {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
   preflightContinue: false,
   optionsSuccessStatus: 204
 };
