@@ -18,12 +18,29 @@ const models = require('./models');
 // Initialize Express app
 const app = express();
 
-// Middleware
-app.use(helmet()); // Security headers
-
-// CORS configuration - Allow all origins
+// CORS configuration - Allow skyprepaero.com domains
 const corsOptions = {
-  origin: true, // Allow all origins
+  origin(origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman, curl)
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    // Allow all skyprepaero.com subdomains (including classroom.skyprepaero.com)
+    const skyprepDomainPattern = /^https?:\/\/([\w-]+\.)?skyprepaero\.com(?::\d+)?$/;
+    if (skyprepDomainPattern.test(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    // In development, allow all origins
+    if (process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -34,6 +51,12 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+
+// Middleware - Apply helmet after CORS to avoid conflicts
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false
+}));
 app.use(morgan('dev')); // Logging
 app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
