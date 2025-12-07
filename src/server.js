@@ -43,7 +43,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-api-version'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
   preflightContinue: false,
   optionsSuccessStatus: 204
@@ -55,7 +55,8 @@ app.options('*', cors(corsOptions));
 // Middleware - Apply helmet after CORS to avoid conflicts
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
-  crossOriginEmbedderPolicy: false
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: { policy: "unsafe-none" }
 }));
 app.use(morgan('dev')); // Logging
 app.use(express.json()); // Parse JSON bodies
