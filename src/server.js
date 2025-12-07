@@ -21,31 +21,9 @@ const app = express();
 // Middleware
 app.use(helmet()); // Security headers
 
-// CORS configuration - Environment-specific origin handling
-const isDevelopment = process.env.NODE_ENV === 'development';
-
+// CORS configuration - Allow all origins
 const corsOptions = {
-  origin(origin, callback) {
-    // Allow requests with no origin (like mobile apps, Postman, curl)
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-
-    // In development: allow everything
-    if (isDevelopment) {
-      callback(null, true);
-      return;
-    }
-
-    // In production: only allow skyprepaero.com and its subdomains
-    const skyprepDomainPattern = /^https?:\/\/([\w-]+\.)?skyprepaero\.com(?::\d+)?$/;
-    if (skyprepDomainPattern.test(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true, // Allow all origins
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
