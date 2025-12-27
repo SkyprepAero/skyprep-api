@@ -184,7 +184,7 @@ sessionSchema.pre('validate', function(next) {
     return next(new Error('Session end time must be after start time'));
   }
 
-  // Validate that requested sessions are at least one day in advance (excluding Sundays) and within 9 AM - 9 PM
+  // Validate that requested sessions are at least one day in advance (excluding Sundays and public holidays) and within 9 AM - 9 PM
   if ((this.status === 'requested' || this.isNew) && this.startTime) {
     const startDate = new Date(this.startTime);
     const now = new Date();
@@ -204,16 +204,40 @@ sessionSchema.pre('validate', function(next) {
       return next(new Error('Cannot schedule sessions in the past'));
     }
     
+    // Check if session is more than 1.5 weeks (10.5 days) in advance
+    // Calculate 10.5 days = 10 days + 12 hours
+    // Since we compare dates at midnight, we allow up to the 11th day (to account for sessions throughout that day)
+    const maxAllowedDate = new Date(today);
+    maxAllowedDate.setDate(today.getDate() + 11); // 11 days ahead to allow 10.5 days of booking window
+    maxAllowedDate.setHours(0, 0, 0, 0);
+    
+    if (sessionDay >= maxAllowedDate) {
+      return next(new Error('Sessions can only be scheduled up to 1.5 weeks (10.5 days) in advance'));
+    }
+    
     // Check if session is on Sunday
     if (startDate.getDay() === 0) {
       return next(new Error('Sessions cannot be scheduled on Sundays'));
     }
     
-    // Check if start time is between 9 AM and 7:45 PM (75 minutes before 9 PM)
+    // Note: Public holiday check is done in the controller since pre-save hooks
+    // cannot easily handle async operations with mongoose models
+    
+    // Check if session is on Saturday (restricted hours: 9 AM - 4 PM)
+    const isSaturday = startDate.getDay() === 6;
     const startHour = startDate.getHours();
     const startMinute = startDate.getMinutes();
-    if (startHour < 9 || (startHour > 19) || (startHour === 19 && startMinute > 45)) {
-      return next(new Error('Session start time must be between 9 AM and 7:45 PM'));
+    
+    if (isSaturday) {
+      // Saturday: validate start time is between 9 AM and 3:15 PM (75 minutes before 4 PM)
+      if (startHour < 9 || (startHour > 15) || (startHour === 15 && startMinute > 15)) {
+        return next(new Error('On Saturdays, session start time must be between 9 AM and 3:15 PM'));
+      }
+    } else {
+      // Weekdays: validate start time is between 9 AM and 7:45 PM (75 minutes before 9 PM)
+      if (startHour < 9 || (startHour > 19) || (startHour === 19 && startMinute > 45)) {
+        return next(new Error('Session start time must be between 9 AM and 7:45 PM'));
+      }
     }
     
     // Validate end time if provided
@@ -221,14 +245,27 @@ sessionSchema.pre('validate', function(next) {
       const endDate = new Date(this.endTime);
       const endHour = endDate.getHours();
       
-      // Check if end time is within 9 AM to 9 PM
-      if (endHour < 9 || endHour > 21) {
-        return next(new Error('Session end time must be between 9 AM and 9 PM'));
-      }
-      
-      // If end time is 9 PM, ensure it's exactly 9 PM (not later)
-      if (endHour === 21 && endDate.getMinutes() > 0) {
-        return next(new Error('Session cannot extend beyond 9 PM'));
+      // Use isSaturday from start date since sessions must start and end on the same day
+      if (isSaturday) {
+        // Saturday: validate end time is at most 4 PM
+        if (endHour < 9 || endHour > 16) {
+          return next(new Error('On Saturdays, session end time must be between 9 AM and 4 PM'));
+        }
+        
+        // If end time is 4 PM, ensure it's exactly 4 PM (not later)
+        if (endHour === 16 && endDate.getMinutes() > 0) {
+          return next(new Error('On Saturdays, session cannot extend beyond 4 PM'));
+        }
+      } else {
+        // Weekdays: validate end time is within 9 AM to 9 PM
+        if (endHour < 9 || endHour > 21) {
+          return next(new Error('Session end time must be between 9 AM and 9 PM'));
+        }
+        
+        // If end time is 9 PM, ensure it's exactly 9 PM (not later)
+        if (endHour === 21 && endDate.getMinutes() > 0) {
+          return next(new Error('Session cannot extend beyond 9 PM'));
+        }
       }
     }
   }

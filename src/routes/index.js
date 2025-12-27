@@ -17,6 +17,7 @@ const testSeriesRoutes = require('./testSeriesRoutes');
 const sessionRoutes = require('./sessionRoutes');
 const adminEnrollmentRoutes = require('../admin/enrollmentRoutes');
 const adminTeacherRoutes = require('../admin/teacherRoutes');
+const adminPublicHolidayRoutes = require('../admin/publicHolidayRoutes');
 
 // Mount routes
 router.use('/auth', authRoutes);
@@ -34,6 +35,7 @@ router.use('/test-series', testSeriesRoutes);
 router.use('/sessions', sessionRoutes);
 router.use('/admin', adminEnrollmentRoutes);
 router.use('/admin/teachers', adminTeacherRoutes);
+router.use('/admin', adminPublicHolidayRoutes);
 
 module.exports = router;
 

@@ -1,11 +1,13 @@
 const Session = require('../models/Session');
 const FocusOne = require('../models/FocusOne');
+const { PublicHoliday } = require('../models');
 
 // Constants
 const MAX_SESSIONS_PER_DAY = 4;
 const BREAK_DURATION_MINUTES = 15;
 const WORKING_HOUR_START = 9; // 9 AM
 const WORKING_HOUR_END = 21; // 9 PM
+const SATURDAY_HOUR_END = 16; // 4 PM (Saturday only)
 const LECTURE_UNAVAILABLE_DURATION_MINUTES = 60; // 1 hour unavailable after back-to-back sessions
 
 /**
@@ -196,6 +198,12 @@ const generateAvailableSlots = async (teacherId, date, slotDurationMinutes = 75,
   const sessionDate = new Date(date);
   sessionDate.setHours(0, 0, 0, 0);
 
+  // Check if the date is a public holiday
+  const isHoliday = await PublicHoliday.isPublicHoliday(sessionDate);
+  if (isHoliday) {
+    return []; // No slots available on public holidays
+  }
+
   // Get existing sessions (including requested sessions with same subject)
   const existingSessions = await getTeacherSessionsForDate(teacherId, sessionDate, subjectId);
 
@@ -204,18 +212,22 @@ const generateAvailableSlots = async (teacherId, date, slotDurationMinutes = 75,
     return [];
   }
 
-  // Generate potential slots from 9 AM to 9 PM
+  // Generate potential slots from 9 AM to 9 PM (or 4 PM on Saturdays)
   const availableSlots = [];
   const slotDurationMs = slotDurationMinutes * 60 * 1000;
   const breakMs = BREAK_DURATION_MINUTES * 60 * 1000;
+
+  // Check if the date is Saturday (getDay() returns 6 for Saturday)
+  const isSaturday = sessionDate.getDay() === 6;
+  const dayEndHour = isSaturday ? SATURDAY_HOUR_END : WORKING_HOUR_END;
 
   // Start from 9 AM on the given date
   const currentSlotStart = new Date(sessionDate);
   currentSlotStart.setHours(WORKING_HOUR_START, 0, 0, 0);
   
-  // End at 9 PM on the given date
+  // End at 9 PM on weekdays, 4 PM on Saturdays
   const dayEnd = new Date(sessionDate);
-  dayEnd.setHours(WORKING_HOUR_END, 0, 0, 0);
+  dayEnd.setHours(dayEndHour, 0, 0, 0);
 
   // Generate slots in 15-minute increments to allow for flexible scheduling with breaks
   const incrementMs = 15 * 60 * 1000; // 15 minutes

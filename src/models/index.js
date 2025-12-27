@@ -19,6 +19,7 @@ const Book = require('./Book');
 const EmailPasscode = require('./EmailPasscode');
 const Lead = require('./Lead');
 const Session = require('./Session');
+const PublicHoliday = require('./PublicHoliday');
 
 // Export all models
 module.exports = {
@@ -37,7 +38,8 @@ module.exports = {
   Book,
   EmailPasscode,
   Lead,
-  Session
+  Session,
+  PublicHoliday
 };
 
 // Alternative: You can also use individual exports

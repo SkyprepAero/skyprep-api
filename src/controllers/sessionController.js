@@ -1,4 +1,4 @@
-const { Session, FocusOne, Cohort, User } = require('../models');
+const { Session, FocusOne, Cohort, User, PublicHoliday } = require('../models');
 const { successResponse } = require('../utils/response');
 const { AppError, ERROR_CODES } = require('../errors');
 const { HTTP_STATUS } = require('../utils/constants');
@@ -619,6 +619,21 @@ const requestSession = async (req, res, next) => {
       );
     }
     
+    // Check if session is more than 1.5 weeks (10.5 days) in advance
+    // Calculate 10.5 days = 10 days + 12 hours
+    // Since we compare dates at midnight, we allow up to the 11th day (to account for sessions throughout that day)
+    const maxAllowedDate = new Date(today);
+    maxAllowedDate.setDate(today.getDate() + 11); // 11 days ahead to allow 10.5 days of booking window
+    maxAllowedDate.setHours(0, 0, 0, 0);
+    
+    if (sessionDay >= maxAllowedDate) {
+      throw new AppError(
+        ERROR_CODES.SESSION.INVALID_TIME,
+        HTTP_STATUS.BAD_REQUEST,
+        { message: 'Sessions can only be scheduled up to 1.5 weeks (10.5 days) in advance' }
+      );
+    }
+    
     // Check if session is at least one day after program start date (if start date exists)
     if (focusOneDoc.startedAt) {
       const programStartDate = new Date(focusOneDoc.startedAt);
@@ -666,6 +681,25 @@ const requestSession = async (req, res, next) => {
       );
     }
     
+    // Check if session is on a public holiday
+    const sessionDayForHoliday = new Date(startDate);
+    sessionDayForHoliday.setHours(0, 0, 0, 0);
+    const isHoliday = await PublicHoliday.isPublicHoliday(sessionDayForHoliday);
+    if (isHoliday) {
+      const endOfDay = new Date(sessionDayForHoliday);
+      endOfDay.setHours(23, 59, 59, 999);
+      const holiday = await PublicHoliday.findOne({
+        date: { $gte: sessionDayForHoliday, $lte: endOfDay },
+        isActive: true
+      });
+      const holidayName = holiday ? holiday.name : 'a public holiday';
+      throw new AppError(
+        ERROR_CODES.SESSION.INVALID_TIME,
+        HTTP_STATUS.BAD_REQUEST,
+        { message: `Sessions cannot be scheduled on ${holidayName}` }
+      );
+    }
+    
     // Check if start and end times are on the same day
     if (startDate.toDateString() !== endDate.toDateString()) {
       throw new AppError(
@@ -675,34 +709,69 @@ const requestSession = async (req, res, next) => {
       );
     }
     
-    // Validate start time is between 9 AM and 7:45 PM (75 minutes before 9 PM)
-    const startHour = startDate.getHours();
-    const startMinute = startDate.getMinutes();
-    if (startHour < 9 || (startHour > 19) || (startHour === 19 && startMinute > 45)) {
-      throw new AppError(
-        ERROR_CODES.SESSION.INVALID_TIME,
-        HTTP_STATUS.BAD_REQUEST,
-        { message: 'Session start time must be between 9 AM and 7:45 PM' }
-      );
-    }
+    // Check if session is on Saturday (restricted hours: 9 AM - 4 PM)
+    const isSaturday = startDate.getDay() === 6;
     
-    // Validate end time is between 9 AM and 9 PM
-    const endHour = endDate.getHours();
-    if (endHour < 9 || endHour > 21) {
-      throw new AppError(
-        ERROR_CODES.SESSION.INVALID_TIME,
-        HTTP_STATUS.BAD_REQUEST,
-        { message: 'Session end time must be between 9 AM and 9 PM' }
-      );
-    }
-    
-    // If end time is 9 PM, ensure it's exactly 9 PM (not later)
-    if (endHour === 21 && endDate.getMinutes() > 0) {
-      throw new AppError(
-        ERROR_CODES.SESSION.INVALID_TIME,
-        HTTP_STATUS.BAD_REQUEST,
-        { message: 'Session cannot extend beyond 9 PM' }
-      );
+    if (isSaturday) {
+      // Saturday: validate start time is between 9 AM and 3:15 PM (75 minutes before 4 PM)
+      const startHour = startDate.getHours();
+      const startMinute = startDate.getMinutes();
+      if (startHour < 9 || (startHour > 15) || (startHour === 15 && startMinute > 15)) {
+        throw new AppError(
+          ERROR_CODES.SESSION.INVALID_TIME,
+          HTTP_STATUS.BAD_REQUEST,
+          { message: 'On Saturdays, session start time must be between 9 AM and 3:15 PM' }
+        );
+      }
+      
+      // Saturday: validate end time is at most 4 PM
+      const endHour = endDate.getHours();
+      if (endHour < 9 || endHour > 16) {
+        throw new AppError(
+          ERROR_CODES.SESSION.INVALID_TIME,
+          HTTP_STATUS.BAD_REQUEST,
+          { message: 'On Saturdays, session end time must be between 9 AM and 4 PM' }
+        );
+      }
+      
+      // If end time is 4 PM, ensure it's exactly 4 PM (not later)
+      if (endHour === 16 && endDate.getMinutes() > 0) {
+        throw new AppError(
+          ERROR_CODES.SESSION.INVALID_TIME,
+          HTTP_STATUS.BAD_REQUEST,
+          { message: 'On Saturdays, session cannot extend beyond 4 PM' }
+        );
+      }
+    } else {
+      // Weekdays: validate start time is between 9 AM and 7:45 PM (75 minutes before 9 PM)
+      const startHour = startDate.getHours();
+      const startMinute = startDate.getMinutes();
+      if (startHour < 9 || (startHour > 19) || (startHour === 19 && startMinute > 45)) {
+        throw new AppError(
+          ERROR_CODES.SESSION.INVALID_TIME,
+          HTTP_STATUS.BAD_REQUEST,
+          { message: 'Session start time must be between 9 AM and 7:45 PM' }
+        );
+      }
+      
+      // Weekdays: validate end time is between 9 AM and 9 PM
+      const endHour = endDate.getHours();
+      if (endHour < 9 || endHour > 21) {
+        throw new AppError(
+          ERROR_CODES.SESSION.INVALID_TIME,
+          HTTP_STATUS.BAD_REQUEST,
+          { message: 'Session end time must be between 9 AM and 9 PM' }
+        );
+      }
+      
+      // If end time is 9 PM, ensure it's exactly 9 PM (not later)
+      if (endHour === 21 && endDate.getMinutes() > 0) {
+        throw new AppError(
+          ERROR_CODES.SESSION.INVALID_TIME,
+          HTTP_STATUS.BAD_REQUEST,
+          { message: 'Session cannot extend beyond 9 PM' }
+        );
+      }
     }
 
     // Check teacher availability for the requested subject
@@ -1704,12 +1773,45 @@ const getAvailableSlots = async (req, res, next) => {
       );
     }
 
+    // Check if date is more than 1.5 weeks (10.5 days) in advance
+    // Since we're comparing dates at midnight, add 11 days to account for 10.5 days
+    const maxAllowedDate = new Date(today);
+    maxAllowedDate.setDate(today.getDate() + 11); // Add 11 days to account for 10.5 days when comparing at midnight
+    maxAllowedDate.setHours(0, 0, 0, 0);
+    
+    if (requestedDate >= maxAllowedDate) {
+      throw new AppError(
+        ERROR_CODES.SESSION.INVALID_TIME,
+        HTTP_STATUS.BAD_REQUEST,
+        { message: 'Sessions can only be scheduled up to 1.5 weeks (10.5 days) in advance' }
+      );
+    }
+
     // Check if date is Sunday
     if (sessionDate.getDay() === 0) {
       throw new AppError(
         ERROR_CODES.SESSION.INVALID_TIME,
         HTTP_STATUS.BAD_REQUEST,
         { message: 'Sessions cannot be scheduled on Sundays' }
+      );
+    }
+
+    // Check if date is a public holiday
+    const dateForHolidayCheck = new Date(requestedDate);
+    dateForHolidayCheck.setHours(0, 0, 0, 0);
+    const isHoliday = await PublicHoliday.isPublicHoliday(dateForHolidayCheck);
+    if (isHoliday) {
+      const endOfDay = new Date(dateForHolidayCheck);
+      endOfDay.setHours(23, 59, 59, 999);
+      const holiday = await PublicHoliday.findOne({
+        date: { $gte: dateForHolidayCheck, $lte: endOfDay },
+        isActive: true
+      });
+      const holidayName = holiday ? holiday.name : 'a public holiday';
+      throw new AppError(
+        ERROR_CODES.SESSION.INVALID_TIME,
+        HTTP_STATUS.BAD_REQUEST,
+        { message: `Sessions cannot be scheduled on ${holidayName}` }
       );
     }
 
