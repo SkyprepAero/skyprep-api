@@ -419,6 +419,16 @@ const populateUserForAuth = async (user) => {
     populate: { path: 'permissions' }
   });
   await user.populate('primaryRole');
+  
+  // Populate enrollment data if present (only populate if enrollment exists)
+  // Note: We check if the enrollment object exists, not just the reference
+  if (user.focusOneEnrollment) {
+    await user.populate('focusOneEnrollment.focusOne');
+  }
+  if (user.cohortEnrollment) {
+    await user.populate('cohortEnrollment.cohort');
+  }
+  
   return user;
 };
 
@@ -445,6 +455,14 @@ const buildUserProfile = (user, options = {}) => {
     isSuperAdmin = false
   } = options;
 
+  // Determine enrollment type
+  let enrollmentType = null;
+  if (user.focusOneEnrollment && user.focusOneEnrollment.focusOne) {
+    enrollmentType = 'focusOne';
+  } else if (user.cohortEnrollment && user.cohortEnrollment.cohort) {
+    enrollmentType = 'cohort';
+  }
+
   const profile = {
     id: user._id,
     name: user.name,
@@ -456,7 +474,8 @@ const buildUserProfile = (user, options = {}) => {
           name: user.primaryRole.name,
           displayName: user.primaryRole.displayName
         }
-      : null
+      : null,
+    enrollmentType // 'focusOne' | 'cohort' | null
   };
 
   if (includePermissions) {
@@ -577,6 +596,27 @@ const loginWithPassword = async ({ email, password }) => {
   await populateUserForAuth(user);
   const allPermissions = await user.getAllPermissions();
 
+  // Check if user has admin or super-admin role - skip passcode for admins
+  const userRoleNames = user.roles.map(r => r.name);
+  const isAdmin = userRoleNames.includes('admin') || userRoleNames.includes('super-admin');
+
+  // If admin, issue session directly without passcode
+  if (isAdmin) {
+    const session = await issueNewSession({ user, allPermissions });
+    
+    return {
+      user: buildUserProfile(user, {
+        includeRoleLevel: true,
+        includePermissions: true,
+        permissions: allPermissions
+      }),
+      token: session.token,
+      tokenExpiresAt: session.tokenExpiresAt,
+      requiresPasscode: false
+    };
+  }
+
+  // For non-admin users, require passcode verification
   const passcodeInfo = await createAndDispatchEmailPasscode({
     user,
     purpose: EMAIL_PASSCODE.PURPOSES.LOGIN,
@@ -860,15 +900,173 @@ const resetPasswordWithToken = async ({
   };
 };
 
+const setupPasswordWithToken = async ({
+  setupToken,
+  newPassword,
+  name = null,
+  phoneNumber = null,
+  city = null,
+  ipAddress = null,
+  userAgent = null
+}) => {
+  let decoded;
+  try {
+    decoded = verifyToken(setupToken);
+  } catch (error) {
+    throw new AppError(ERROR_CODES.AUTH.TOKEN_INVALID, HTTP_STATUS.UNAUTHORIZED);
+  }
+
+  if (!decoded || decoded.type !== 'password_setup' || !decoded.userId || !decoded.resetNonce) {
+    throw new AppError(ERROR_CODES.AUTH.TOKEN_INVALID, HTTP_STATUS.UNAUTHORIZED);
+  }
+
+  const user = await User.findById(decoded.userId).select('+password');
+
+  if (!user) {
+    throw new AppError(ERROR_CODES.AUTH.INVALID_CREDENTIALS, HTTP_STATUS.UNAUTHORIZED);
+  }
+
+  if (!user.passwordResetNonce || user.passwordResetNonce !== decoded.resetNonce) {
+    throw new AppError(ERROR_CODES.AUTH.TOKEN_INVALID, HTTP_STATUS.UNAUTHORIZED);
+  }
+
+  // Set the new password
+  user.password = newPassword;
+  user.passwordResetNonce = null;
+  user.passwordResetIssuedAt = null;
+
+  // Update user details if provided
+  if (name && name.trim()) {
+    user.name = name.trim();
+  }
+  if (phoneNumber && phoneNumber.trim()) {
+    user.phoneNumber = phoneNumber.trim();
+  }
+  if (city && city.trim()) {
+    user.city = city.trim();
+  }
+
+  await user.save({ validateBeforeSave: false });
+
+  await populateUserForAuth(user);
+  const allPermissions = await user.getAllPermissions();
+  const session = await issueNewSession({ user, allPermissions, ipAddress, userAgent });
+
+  return {
+    user: buildUserProfile(user, {
+      includeRoleLevel: true,
+      includePermissions: true,
+      permissions: allPermissions
+    }),
+    token: session.token,
+    tokenExpiresAt: session.tokenExpiresAt
+  };
+};
+
+const getCurrentUserEnrollment = async (user) => {
+  // Populate enrollment data
+  if (user.focusOneEnrollment) {
+    await user.populate('focusOneEnrollment.focusOne');
+    await user.populate('focusOneEnrollment.focusOne.teacherSubjectMappings.teacher', 'name email');
+    await user.populate('focusOneEnrollment.focusOne.teacherSubjectMappings.subject', 'name description');
+    await user.populate('focusOneEnrollment.focusOne.student', 'name email');
+    await user.populate('focusOneEnrollment.teacherSubjectMappings.teacher', 'name email');
+    await user.populate('focusOneEnrollment.teacherSubjectMappings.subject', 'name description');
+  }
+  if (user.cohortEnrollment) {
+    await user.populate('cohortEnrollment.cohort');
+    await user.populate('cohortEnrollment.cohort.subjects.subject', 'name description');
+  }
+
+  if (user.focusOneEnrollment && user.focusOneEnrollment.focusOne) {
+    const focusOne = user.focusOneEnrollment.focusOne;
+    return {
+      type: 'focusOne',
+      enrollment: {
+        id: focusOne._id,
+        description: focusOne.description,
+        status: focusOne.status, // FocusOne entity status (active, completed) - use isActive for pause, deletedAt for cancelled
+        isActive: focusOne.isActive, // true = active, false = paused
+        isCancelled: !!focusOne.deletedAt, // true if cancelled (soft deleted)
+        pausedAt: focusOne.pausedAt,
+        resumedAt: focusOne.resumedAt,
+        teacherSubjectMappings: (focusOne.teacherSubjectMappings || []).map(mapping => ({
+          teacher: {
+            id: mapping.teacher._id || mapping.teacher,
+            name: mapping.teacher.name,
+            email: mapping.teacher.email
+          },
+          subject: {
+            id: mapping.subject._id || mapping.subject,
+            name: mapping.subject.name,
+            description: mapping.subject.description
+          }
+        })),
+        student: focusOne.student ? {
+          id: focusOne.student._id,
+          name: focusOne.student.name,
+          email: focusOne.student.email
+        } : null,
+        enrolledAt: focusOne.enrolledAt,
+        startedAt: focusOne.startedAt
+      },
+      teacherSubjectMappings: (user.focusOneEnrollment.teacherSubjectMappings || []).map(mapping => ({
+        teacher: {
+          id: mapping.teacher._id || mapping.teacher,
+          name: mapping.teacher.name,
+          email: mapping.teacher.email
+        },
+        subject: {
+          id: mapping.subject._id || mapping.subject,
+          name: mapping.subject.name,
+          description: mapping.subject.description
+        }
+      })),
+      status: focusOne.status, // Use status field directly (maintained alongside isActive and deletedAt)
+      enrollmentStatus: user.focusOneEnrollment.status, // User enrollment status (active, completed, withdrawn, cancelled) - kept for reference
+      enrolledAt: user.focusOneEnrollment.enrolledAt,
+      startedAt: user.focusOneEnrollment.startedAt
+    };
+  } else if (user.cohortEnrollment && user.cohortEnrollment.cohort) {
+    const cohort = user.cohortEnrollment.cohort;
+    return {
+      type: 'cohort',
+      enrollment: {
+        id: cohort._id,
+        name: cohort.name,
+        slug: cohort.slug,
+        description: cohort.description,
+        status: cohort.status,
+        startDate: cohort.startDate,
+        endDate: cohort.endDate,
+        subjects: (cohort.subjects || []).map(cohortSubject => ({
+          id: cohortSubject.subject._id,
+          name: cohortSubject.subject.name,
+          description: cohortSubject.subject.description,
+          isActive: cohortSubject.isActive
+        }))
+      },
+      status: user.cohortEnrollment.status,
+      enrolledAt: user.cohortEnrollment.enrolledAt,
+      startedAt: user.cohortEnrollment.startedAt,
+      joinedViaWaitlist: user.cohortEnrollment.joinedViaWaitlist
+    };
+  }
+
+  return null;
+};
+
 module.exports = {
   registerUser,
   loginWithPassword,
   getCurrentUserProfile,
+  getCurrentUserEnrollment,
   loginWithGoogle,
   verifyLoginWithPasscode,
   requestPasswordResetPasscode,
   verifyPasswordResetPasscode,
-  resetPasswordWithToken
+  resetPasswordWithToken,
+  setupPasswordWithToken
 };
 
 

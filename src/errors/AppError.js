@@ -12,7 +12,9 @@ class AppError extends Error {
    * @param {Object} details - Additional error details (optional)
    */
   constructor(errorCode, statusCode = HTTP_STATUS.INTERNAL_SERVER_ERROR, details = null) {
-    super(errorCode.message);
+    // Use custom message from details if provided, otherwise use errorCode.message
+    const message = (details && details.message) ? details.message : errorCode.message;
+    super(message);
     
     this.name = this.constructor.name;
     this.errorCode = errorCode.code;

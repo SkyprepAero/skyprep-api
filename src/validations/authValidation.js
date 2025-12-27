@@ -116,4 +116,37 @@ exports.forgotPasswordResetValidation = [
     .withMessage(`Password cannot be more than ${VALIDATION.PASSWORD_MAX_LENGTH} characters`)
 ];
 
+// Password Setup Validation Rules (for new enrollments)
+exports.setupPasswordValidation = [
+  body('setupToken')
+    .notEmpty()
+    .withMessage('Setup token is required'),
+
+  body('newPassword')
+    .notEmpty()
+    .withMessage('New password is required')
+    .isLength({ min: VALIDATION.PASSWORD_MIN_LENGTH })
+    .withMessage(`Password must be at least ${VALIDATION.PASSWORD_MIN_LENGTH} characters long`)
+    .isLength({ max: VALIDATION.PASSWORD_MAX_LENGTH })
+    .withMessage(`Password cannot be more than ${VALIDATION.PASSWORD_MAX_LENGTH} characters`),
+
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('Name cannot be more than 50 characters'),
+
+  body('phoneNumber')
+    .optional()
+    .trim()
+    .isLength({ max: 15 })
+    .withMessage('Phone number cannot be more than 15 characters'),
+
+  body('city')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('City cannot be more than 50 characters')
+];
+
 

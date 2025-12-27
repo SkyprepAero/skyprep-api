@@ -184,6 +184,7 @@ exports.setPrimaryRole = asyncHandler(async (req, res, next) => {
 exports.getUsersByRole = asyncHandler(async (req, res, next) => {
   const { role } = req.params;
   const { limit = 50, page = 1 } = req.query;
+  const { Role } = require('../models');
   
   // Validate role
   if (!Object.values(USER_ROLES).includes(role)) {
@@ -193,15 +194,26 @@ exports.getUsersByRole = asyncHandler(async (req, res, next) => {
     );
   }
   
+  // Find the role document by name
+  const roleDoc = await Role.findOne({ name: role, isActive: true });
+  if (!roleDoc) {
+    throw new AppError(
+      { code: 'ROLE_4001', message: `Role '${role}' not found` },
+      HTTP_STATUS.NOT_FOUND
+    );
+  }
+  
   const skip = (page - 1) * limit;
   
-  const users = await User.find({ roles: role })
+  // Find users that have this role in their roles array
+  const users = await User.find({ roles: roleDoc._id })
+    .populate('roles', 'name displayName')
     .select('-password')
     .limit(parseInt(limit))
     .skip(skip)
     .sort({ createdAt: -1 });
   
-  const total = await User.countDocuments({ roles: role });
+  const total = await User.countDocuments({ roles: roleDoc._id });
   
   res.status(HTTP_STATUS.OK).json({
     success: true,

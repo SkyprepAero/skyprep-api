@@ -11,6 +11,12 @@ const chapterRoutes = require('./chapterRoutes');
 const questionRoutes = require('./questionRoutes');
 const optionRoutes = require('./optionRoutes');
 const leadRoutes = require('./leadRoutes');
+const focusOneRoutes = require('./focusOneRoutes');
+const cohortRoutes = require('./cohortRoutes');
+const testSeriesRoutes = require('./testSeriesRoutes');
+const sessionRoutes = require('./sessionRoutes');
+const adminEnrollmentRoutes = require('../admin/enrollmentRoutes');
+const adminTeacherRoutes = require('../admin/teacherRoutes');
 
 // Mount routes
 router.use('/auth', authRoutes);
@@ -22,6 +28,12 @@ router.use('/chapters', chapterRoutes);
 router.use('/questions', questionRoutes);
 router.use('/options', optionRoutes);
 router.use('/leads', leadRoutes);
+router.use('/focus-ones', focusOneRoutes);
+router.use('/cohorts', cohortRoutes);
+router.use('/test-series', testSeriesRoutes);
+router.use('/sessions', sessionRoutes);
+router.use('/admin', adminEnrollmentRoutes);
+router.use('/admin/teachers', adminTeacherRoutes);
 
 module.exports = router;
 

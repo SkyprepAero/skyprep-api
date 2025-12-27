@@ -30,18 +30,13 @@ const cohortSchema = new mongoose.Schema({
     lowercase: true,
     unique: true
   },
-  course: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Course',
-    required: [true, 'Base course reference is required']
-  },
   description: {
     type: String,
     trim: true
   },
   status: {
     type: String,
-    enum: ['planned', 'active', 'completed', 'cancelled'],
+    enum: ['planned', 'active', 'paused', 'completed', 'cancelled'],
     default: 'planned'
   },
   startDate: {
@@ -75,6 +70,53 @@ const cohortSchema = new mongoose.Schema({
     type: [cohortSubjectSchema],
     default: []
   },
+  pausedAt: {
+    type: Date,
+    default: null
+  },
+  pausedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  resumedAt: {
+    type: Date,
+    default: null
+  },
+  pauseHistory: {
+    type: [{
+      pausedAt: {
+        type: Date,
+        required: true
+      },
+      pausedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      },
+      resumedAt: {
+        type: Date,
+        default: null
+      },
+      resumedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+      },
+      reason: {
+        type: String,
+        trim: true,
+        default: null
+      },
+      notes: {
+        type: String,
+        trim: true,
+        default: null
+      }
+    }],
+    default: [],
+    _id: false
+  },
   metadata: {
     type: Map,
     of: mongoose.Schema.Types.Mixed,
@@ -92,31 +134,8 @@ const cohortSchema = new mongoose.Schema({
   timestamps: true
 });
 
-cohortSchema.index({ course: 1, status: 1 });
+cohortSchema.index({ status: 1, isActive: 1 });
 cohortSchema.index({ isActive: 1 });
-
-cohortSchema.pre('save', async function validateCourseType(next) {
-  if (!this.isModified('course')) {
-    return next();
-  }
-
-  try {
-    const Course = mongoose.model('Course');
-    const course = await Course.findById(this.course);
-
-    if (!course) {
-      return next(new Error('Referenced course does not exist'));
-    }
-
-    if (course.type !== 'cohort') {
-      return next(new Error('Cohort must reference a course with type "cohort"'));
-    }
-
-    return next();
-  } catch (error) {
-    return next(error);
-  }
-});
 
 cohortSchema.pre(/^find/, function cohortSoftDeleteFilter() {
   this.where({ deletedAt: null });

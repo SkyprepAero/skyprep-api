@@ -29,7 +29,8 @@ module.exports = {
     INVALID_ID: { code: 'USER_2003', message: 'Invalid user ID format' },
     UPDATE_FAILED: { code: 'USER_2004', message: 'Failed to update user' },
     DELETE_FAILED: { code: 'USER_2005', message: 'Failed to delete user' },
-    CREATION_FAILED: { code: 'USER_2006', message: 'Failed to create user' }
+    CREATION_FAILED: { code: 'USER_2006', message: 'Failed to create user' },
+    ALREADY_ENROLLED: { code: 'USER_2007', message: 'User is already enrolled' }
   },
 
   // Authorization Errors (3000-3999)
@@ -77,6 +78,27 @@ module.exports = {
     NOT_FOUND: { code: 'QST_8001', message: 'Question not found' },
     INVALID_OPTIONS: { code: 'QST_8002', message: 'Question must have between 2 and 4 options' },
     NO_CORRECT_OPTION: { code: 'QST_8003', message: 'At least one option must be marked as correct' }
+  },
+
+  // Focus One Errors (8500-8599)
+  FOCUS_ONE: {
+    NOT_FOUND: { code: 'FOC_8501', message: 'Focus One not found' },
+    ALREADY_EXISTS: { code: 'FOC_8502', message: 'Focus One with this slug already exists' }
+  },
+
+  // Test Series Errors (8600-8699)
+  TEST_SERIES: {
+    NOT_FOUND: { code: 'TST_8601', message: 'Test Series not found' },
+    ALREADY_EXISTS: { code: 'TST_8602', message: 'Test Series with this slug already exists' },
+    ENROLLMENT_EXISTS: { code: 'TST_8603', message: 'User is already enrolled in this test series' }
+  },
+
+  // Session Errors (8700-8799)
+  SESSION: {
+    NOT_FOUND: { code: 'SES_8701', message: 'Session not found' },
+    INVALID_TIME: { code: 'SES_8702', message: 'Session end time must be after start time' },
+    ASSOCIATION_REQUIRED: { code: 'SES_8703', message: 'Session must be associated with either a Focus One or Cohort' },
+    INVALID_ASSOCIATION: { code: 'SES_8704', message: 'Session cannot be associated with both Focus One and Cohort' }
   },
 
   // Server Errors (9000-9999)

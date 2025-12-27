@@ -35,11 +35,6 @@ const testSeriesSchema = new mongoose.Schema({
     lowercase: true,
     unique: true
   },
-  course: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Course',
-    required: [true, 'Base course reference is required']
-  },
   description: {
     type: String,
     trim: true
@@ -97,31 +92,8 @@ const testSeriesSchema = new mongoose.Schema({
   timestamps: true
 });
 
-testSeriesSchema.index({ course: 1, status: 1 });
+testSeriesSchema.index({ status: 1, isActive: 1 });
 testSeriesSchema.index({ isActive: 1 });
-
-testSeriesSchema.pre('save', async function validateCourseType(next) {
-  if (!this.isModified('course')) {
-    return next();
-  }
-
-  try {
-    const Course = mongoose.model('Course');
-    const course = await Course.findById(this.course);
-
-    if (!course) {
-      return next(new Error('Referenced course does not exist'));
-    }
-
-    if (course.type !== 'test_series') {
-      return next(new Error('Test series must reference a course with type "test_series"'));
-    }
-
-    return next();
-  } catch (error) {
-    return next(error);
-  }
-});
 
 testSeriesSchema.pre(/^find/, function testSeriesSoftDeleteFilter() {
   this.where({ deletedAt: null });

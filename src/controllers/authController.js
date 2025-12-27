@@ -114,3 +114,32 @@ exports.resetPasswordWithToken = asyncHandler(async (req, res, next) => {
   successResponse(res, HTTP_STATUS.OK, SUCCESS_MESSAGES.PASSWORD_RESET_SUCCESS, result);
 });
 
+// @desc    Setup password with token (for new enrollments)
+// @route   POST /api/v1/auth/setup-password
+// @access  Public
+exports.setupPasswordWithToken = asyncHandler(async (req, res, next) => {
+  const { setupToken, newPassword, name, phoneNumber, city } = req.body;
+  const client = extractClientContext(req);
+  const result = await authService.setupPasswordWithToken({
+    setupToken,
+    newPassword,
+    name,
+    phoneNumber,
+    city,
+    ipAddress: client.ipAddress,
+    userAgent: client.userAgent
+  });
+  successResponse(res, HTTP_STATUS.OK, 'Password set successfully. You are now logged in.', result);
+});
+
+// @desc    Get current user's enrollment details
+// @route   GET /api/v1/auth/me/enrollment
+// @access  Private
+exports.getMyEnrollment = asyncHandler(async (req, res, next) => {
+  const enrollment = await authService.getCurrentUserEnrollment(req.user);
+  if (!enrollment) {
+    return successResponse(res, HTTP_STATUS.OK, 'No enrollment found', null);
+  }
+  successResponse(res, HTTP_STATUS.OK, 'Enrollment retrieved successfully', enrollment);
+});
+

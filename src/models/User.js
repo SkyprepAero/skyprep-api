@@ -3,24 +3,28 @@ const bcrypt = require('bcryptjs');
 
 const enrollmentStatusEnum = ['pending', 'active', 'completed', 'withdrawn', 'cancelled'];
 
-const subjectPricingSchema = new mongoose.Schema({
-  subject: {
+const focusOneEnrollmentSchema = new mongoose.Schema({
+  focusOne: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Subject',
+    ref: 'FocusOne',
     required: true
   },
-  cost: {
-    type: Number,
-    min: [0, 'Subject cost cannot be negative'],
-    required: true
-  }
-}, { _id: false });
-
-const focusOneEnrollmentSchema = new mongoose.Schema({
-  course: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Course',
-    required: true
+  // Teacher-Subject mapping: which teacher teaches which subject
+  teacherSubjectMappings: {
+    type: [{
+      teacher: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      },
+      subject: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Subject',
+        required: true
+      }
+    }],
+    default: [],
+    _id: false
   },
   status: {
     type: String,
@@ -38,10 +42,6 @@ const focusOneEnrollmentSchema = new mongoose.Schema({
   endedAt: {
     type: Date,
     default: null
-  },
-  subjectPricing: {
-    type: [subjectPricingSchema],
-    default: []
   },
   metadata: {
     type: Map,
@@ -77,10 +77,6 @@ const cohortEnrollmentSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  subjectPricing: {
-    type: [subjectPricingSchema],
-    default: []
-  },
   metadata: {
     type: Map,
     of: mongoose.Schema.Types.Mixed,
@@ -91,13 +87,13 @@ const cohortEnrollmentSchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Please provide a name'],
+    required: false,
     trim: true,
     maxlength: [50, 'Name cannot be more than 50 characters']
   },
   phoneNumber: {
     type: String,
-    required: [true, 'Please provide a phone number'],
+    required: false,
     trim: true,
     maxlength: [15, 'Phone number cannot be more than 15 characters']
   },
@@ -133,16 +129,6 @@ const userSchema = new mongoose.Schema({
   primaryRole: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Role'
-  },
-  company: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Company',
-    default: null // Users can exist without a company
-  },
-  companyRole: {
-    type: String,
-    enum: ['owner', 'admin', 'member'],
-    default: 'member'
   },
   isActive: {
     type: Boolean,
@@ -191,6 +177,21 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  // Google OAuth tokens for Calendar/Meet access
+  googleRefreshToken: {
+    type: String,
+    default: null,
+    select: false // Don't include in queries by default for security
+  },
+  googleAccessToken: {
+    type: String,
+    default: null,
+    select: false
+  },
+  googleTokenExpiry: {
+    type: Date,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -203,21 +204,21 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
+  // User can have EITHER Focus One OR Cohort (mutually exclusive)
   if (this.focusOneEnrollment && this.cohortEnrollment) {
     return next(new Error('User cannot have both focus one and cohort enrollments simultaneously'));
   }
+  
+  // Test Series enrollments can coexist with Focus One or Cohort
+  // No validation needed for testSeriesEnrollments as they are independent
 
   if (this.isModified('focusOneEnrollment') && this.focusOneEnrollment) {
     try {
-      const Course = mongoose.model('Course');
-      const course = await Course.findById(this.focusOneEnrollment.course);
+      const FocusOne = mongoose.model('FocusOne');
+      const focusOne = await FocusOne.findById(this.focusOneEnrollment.focusOne);
 
-      if (!course) {
-        return next(new Error('Invalid focus one course reference'));
-      }
-
-      if (course.type !== 'focus_one') {
-        return next(new Error('Focus one enrollment must reference a course with type "focus_one"'));
+      if (!focusOne) {
+        return next(new Error('Invalid focus one reference'));
       }
     } catch (error) {
       return next(error);
@@ -363,45 +364,13 @@ userSchema.methods.getHighestRole = async function() {
   return highest;
 };
 
-// Method to check if user belongs to a company
-userSchema.methods.belongsToCompany = function() {
-  return this.company !== null && this.company !== undefined;
-};
-
-// Method to check if user is company owner
-userSchema.methods.isCompanyOwner = async function() {
-  if (!this.company) return false;
-  
-  await this.populate('company');
-  return this.company.owner.toString() === this._id.toString();
-};
-
-// Method to check if user is company admin
-userSchema.methods.isCompanyAdmin = async function() {
-  if (!this.company) return false;
-  
-  await this.populate('company');
-  return this.company.admins.some(adminId => adminId.toString() === this._id.toString()) ||
-         await this.isCompanyOwner();
-};
-
-// Method to check if user can access another user (same company)
+// Method to check if user can access another user
 userSchema.methods.canAccessUser = async function(targetUserId) {
   // Super admins can access anyone
   if (await this.hasRole('super-admin')) return true;
   
   // Users can access themselves
   if (this._id.toString() === targetUserId.toString()) return true;
-  
-  // Company admins can access users in their company
-  const targetUser = await mongoose.model('User').findById(targetUserId);
-  if (!targetUser) return false;
-  
-  if (this.company && targetUser.company && 
-      this.company.toString() === targetUser.company.toString() &&
-      await this.isCompanyAdmin()) {
-    return true;
-  }
   
   return false;
 };

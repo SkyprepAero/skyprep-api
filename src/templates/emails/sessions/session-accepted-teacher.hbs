@@ -1,0 +1,78 @@
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8f9fc; margin: 0; padding: 32px 0; font-family: 'Segoe UI', Arial, sans-serif;">
+  <tr>
+    <td>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; box-shadow: 0 12px 32px rgba(21, 29, 59, 0.12); overflow: hidden;">
+        <tr>
+          <td style="padding: 40px 40px 24px; text-align: center; background: linear-gradient(135deg, #28a745, #20c997);">
+            <h1 style="margin: 0; font-size: 24px; line-height: 1.3; color: #ffffff;">
+              Session Scheduled
+            </h1>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 32px 40px 12px; color: #1a1f36;">
+            <p style="margin: 0 0 12px; font-size: 16px;">
+              Hello {{teacherName}},
+            </p>
+            <p style="margin: 0 0 24px; font-size: 16px; color: #4d5775;">
+              You have successfully accepted a session request from {{studentName}}.
+            </p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #d4edda; border-radius: 12px; margin: 0 0 28px; border-left: 4px solid #28a745;">
+              <tr>
+                <td style="padding: 20px;">
+                  <h3 style="margin: 0 0 16px; font-size: 18px; color: #1a1f36;">Session Details:</h3>
+                  <p style="margin: 0 0 12px; font-size: 15px; color: #4d5775;"><strong style="color: #1a1f36;">Title:</strong> {{sessionTitle}}</p>
+                  {{#if sessionDescription}}
+                  <p style="margin: 0 0 12px; font-size: 15px; color: #4d5775;"><strong style="color: #1a1f36;">Your Plan:</strong> {{sessionDescription}}</p>
+                  {{/if}}
+                  <p style="margin: 0 0 12px; font-size: 15px; color: #4d5775;"><strong style="color: #1a1f36;">Date:</strong> {{sessionDate}}</p>
+                  <p style="margin: 0 0 12px; font-size: 15px; color: #4d5775;"><strong style="color: #1a1f36;">Time:</strong> {{sessionStartTime}} - {{sessionEndTime}}</p>
+                  <p style="margin: 0; font-size: 15px; color: #4d5775;"><strong style="color: #1a1f36;">Subject:</strong> {{subjectName}}</p>
+                  <p style="margin: 12px 0 0; font-size: 15px; color: #4d5775;"><strong style="color: #1a1f36;">Student:</strong> {{studentName}}</p>
+                </td>
+              </tr>
+            </table>
+            {{#if meetingLink}}
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #e7f3ff; border-radius: 12px; margin: 0 0 28px; border-left: 4px solid #007bff;">
+              <tr>
+                <td style="padding: 20px;">
+                  <h3 style="margin: 0 0 12px; font-size: 18px; color: #1a1f36;">Meeting Link:</h3>
+                  <p style="margin: 0 0 16px; font-size: 15px; color: #4d5775;">
+                    Your {{meetingPlatform}} meeting link has been automatically generated:
+                  </p>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 0 0 16px;">
+                    <tr>
+                      <td style="text-align: center;">
+                        <a href="{{meetingLink}}" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #007bff, #0056b3); color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                          Join Meeting
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+                  <p style="margin: 0; font-size: 13px; color: #6c757d; word-break: break-all;">
+                    {{meetingLink}}
+                  </p>
+                </td>
+              </tr>
+            </table>
+            {{/if}}
+            <p style="margin: 0 0 32px; font-size: 14px; color: #8f96b4;">
+              The student has been notified and will receive the meeting link as well.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 0 40px 40px;">
+            <p style="margin: 0; font-size: 15px; color: #1a1f36;">
+              Best regards,<br />
+              <strong>SkyPrep Aero Team</strong>
+            </p>
+          </td>
+        </tr>
+        {{> footer}}
+      </table>
+    </td>
+  </tr>
+</table>
+
+

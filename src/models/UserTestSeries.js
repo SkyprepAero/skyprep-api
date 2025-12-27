@@ -30,9 +30,9 @@ const userTestSeriesSchema = new mongoose.Schema({
     required: true,
     index: true
   },
-  course: {
+  testSeries: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Course',
+    ref: 'TestSeries',
     required: true
   },
   status: {
@@ -95,23 +95,21 @@ const userTestSeriesSchema = new mongoose.Schema({
   timestamps: true
 });
 
-userTestSeriesSchema.index({ user: 1, course: 1, isActive: 1 });
+userTestSeriesSchema.index({ user: 1, testSeries: 1, isActive: 1 });
+userTestSeriesSchema.index({ testSeries: 1 });
 
-userTestSeriesSchema.pre('save', async function validateCourseType(next) {
-  if (!this.isModified('course')) {
+// Validate TestSeries exists
+userTestSeriesSchema.pre('save', async function validateTestSeries(next) {
+  if (!this.isModified('testSeries')) {
     return next();
   }
 
   try {
-    const Course = mongoose.model('Course');
-    const course = await Course.findById(this.course);
+    const TestSeries = mongoose.model('TestSeries');
+    const testSeries = await TestSeries.findById(this.testSeries);
 
-    if (!course) {
-      return next(new Error('Referenced course does not exist'));
-    }
-
-    if (course.type !== 'test_series') {
-      return next(new Error('User test series must reference a course with type "test_series"'));
+    if (!testSeries) {
+      return next(new Error('Referenced test series does not exist'));
     }
 
     return next();

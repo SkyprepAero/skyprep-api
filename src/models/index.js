@@ -7,18 +7,18 @@ const User = require('./User');
 const Newsletter = require('./Newsletter');
 const Role = require('./Role');
 const Permission = require('./Permission');
-const Company = require('./Company');
 const Subject = require('./Subject');
 const Chapter = require('./Chapter');
 const Question = require('./Question');
 const Option = require('./Option');
-const Course = require('./Course');
+const FocusOne = require('./FocusOne');
 const Cohort = require('./Cohort');
 const TestSeries = require('./TestSeries');
 const UserTestSeries = require('./UserTestSeries');
 const Book = require('./Book');
 const EmailPasscode = require('./EmailPasscode');
 const Lead = require('./Lead');
+const Session = require('./Session');
 
 // Export all models
 module.exports = {
@@ -26,20 +26,20 @@ module.exports = {
   Newsletter,
   Role,
   Permission,
-  Company,
   Subject,
   Chapter,
   Question,
   Option,
-  Course,
+  FocusOne,
   Cohort,
   TestSeries,
   UserTestSeries,
   Book,
   EmailPasscode,
-  Lead
+  Lead,
+  Session
 };
 
 // Alternative: You can also use individual exports
-// This allows: const { User, Newsletter, Role, Permission, Company } = require('../models');
+// This allows: const { User, Newsletter, Role, Permission } = require('../models');
 
